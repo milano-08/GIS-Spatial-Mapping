@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GIS-Mapping — Free Client-Side Heavy Metal & Mineral Contour Mapping Tool</title>
+<title>GIS-Mapping v7 — Free Client-Side Heavy Metal & Mineral Contour Mapping Tool</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -100,7 +100,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <circle cx="74" cy="24" r="8" fill="#f59e0b"></circle>
 </svg>
 <div>
-<h1>GIS-Mapping</h1>
+<h1>GIS-Mapping v7</h1>
 <p>Free Client-Side Heavy Metal &amp; Mineral Contour Mapping Tool — By Muhammad Haziq</p>
 </div>
 </div>
@@ -856,7 +856,7 @@ var methodLabel={idw:'IDW',ok:'Ordinary Kriging',rbf:'RBF Thin-Plate Spline',tre
 var sub=methodLabel+' • '+S.filtered.length+' samples • WGS84 (EPSG:4326) • grid '+opts.res+'×'+opts.res+(opts.log?' • log10-transformed':'')+(surface.surface==='variance'?' • Kriging variance surface':'');
 ctx.fillText(sub,W/2,66);
 ctx.font='12px Inter'; ctx.fillStyle='#6b7280';
-ctx.fillText('By Muhammad Haziq • GIS-Mapping • '+new Date().toISOString().slice(0,10),W/2,H-22);
+ctx.fillText('By Muhammad Haziq • GIS-Mapping v7 • '+new Date().toISOString().slice(0,10),W/2,H-22);
 return canvas;
 }
 };
@@ -1164,7 +1164,7 @@ var ratio=Math.min((pw-50)/canvas.width,(ph-80)/canvas.height);
 var w=canvas.width*ratio, h=canvas.height*ratio;
 pdf.addImage(img,'JPEG',(pw-w)/2,20,w,h);
 pdf.setFontSize(9);
-pdf.text('GIS-Mapping — By Muhammad Haziq • Parameter: '+(S.activeParam||'')+' • Method: '+opts.method+' • Date: '+new Date().toISOString().slice(0,10), 25, ph-18);
+pdf.text('GIS-Mapping v7 — By Muhammad Haziq • Parameter: '+(S.activeParam||'')+' • Method: '+opts.method+' • Date: '+new Date().toISOString().slice(0,10), 25, ph-18);
 pdf.save('GIS-Mapping_contour_'+(S.activeParam||'map')+'.pdf');
 }catch(e){ U_toast('PDF export error: '+e.message,'error'); }
 }else{
@@ -1259,7 +1259,7 @@ card.innerHTML += '<p><b>GIS-Mapping</b> is a standard, publication-grade, clien
 '</ul>' +
 '<div class="alert info"><b>Developed by Muhammad Haziq.</b></div>' +
 '<h3>Scientific note</h3><p class="small muted">GIS-Mapping implements standard spatial interpolation and geostatistical workflows, including IDW, Ordinary Kriging, RBF thin-plate spline, trend surface, and nearest-neighbour methods. Variogram diagnostics and cross-validation support transparent, reproducible research and publication mapping.</p>' +
-'<h3>How to Cite</h3><div class="code small">Haziq, M. (2026). GIS-Mapping: Free Client-Side Heavy Metal &amp; Mineral Contour Mapping Tool (v7) https://milano-08.github.io/GIS-Spatial-Mapping/.</div>';
+'<h3>How to Cite</h3><div class="code small">Haziq, M. (2026). GIS-Mapping: Free Client-Side Heavy Metal &amp; Mineral Contour Mapping Tool (v7) [Web application].</div>';
 root.appendChild(card);
 }
 
@@ -1483,10 +1483,10 @@ card.appendChild(U_el('div',{id:'rep-out',className:'code small',style:'margin-t
 root.appendChild(card);
 function buildReport(){
 var v=S.vario||{}; var st=S.stats||{}; var cv=S.lastCV && S.lastCV[0] ? S.lastCV : null;
-var txt='GIS-Mapping Analysis Report\n';
+var txt='GIS-Mapping v7 Analysis Report\n';
 txt+='==============================\n\n';
 txt+='Date: '+new Date().toISOString()+'\n';
-txt+='Software: GIS-Mapping by Muhammad Haziq\n';
+txt+='Software: GIS-Mapping v7 by Muhammad Haziq\n';
 txt+='Active parameter: '+(S.activeParam||'—')+'\n';
 txt+='Samples: '+(S.filtered.length||0)+'\n\n';
 txt+='Descriptive statistics\n';
@@ -1497,13 +1497,13 @@ txt+='Variogram\n';
 txt+='Model: '+(v.model||'—')+'\nNugget: '+U_fmt(v.nugget,4)+'\nPartial sill: '+U_fmt(v.psill,4)+'\nSill: '+U_fmt((v.nugget||0)+(v.psill||0),4)+'\nRange km: '+U_fmt(v.range,3)+'\n\n';
 if(cv){ txt+='Cross-validation\n'; for(var i=0;i<cv.length;i++){ txt+=cv[i].name+' RMSE='+U_fmt(cv[i].metrics.RMSE,4)+' MAE='+U_fmt(cv[i].metrics.MAE,4)+' R2='+U_fmt(cv[i].metrics.R2,4)+'\n'; } txt+='\n'; }
 txt+='Methods paragraph\n';
-txt+='Spatial distribution of '+(S.activeParam||'the selected parameter')+' was analyzed using GIS-Mapping. Sample coordinates were provided in WGS84 geographic coordinates. Data preprocessing included coordinate validation, duplicate detection, and descriptive statistics. Interpolation was performed with variogram diagnostics and cross-validation. The final map was produced for publication and reproducible research purposes.';
+txt+='Spatial distribution of '+(S.activeParam||'the selected parameter')+' was analyzed using GIS-Mapping v7. Sample coordinates were provided in WGS84 geographic coordinates. Data preprocessing included coordinate validation, duplicate detection, and descriptive statistics. Interpolation was performed with variogram diagnostics and cross-validation. The final map was produced for publication and reproducible research purposes.';
 return txt;
 }
 document.getElementById('rep-gen').addEventListener('click',function(){ document.getElementById('rep-out').textContent=buildReport(); });
 document.getElementById('rep-txt').addEventListener('click',function(){ U_downloadText('GIS-Mapping_report.txt',buildReport(),'text/plain'); });
 document.getElementById('rep-json').addEventListener('click',function(){
-var out={software:'GIS-Mapping',author:'Muhammad Haziq',date:new Date().toISOString(),activeParam:S.activeParam,samples:S.filtered.length,stats:S.stats,qa:S.qa,vario:S.vario,cv:S.lastCV};
+var out={software:'GIS-Mapping v7',author:'Muhammad Haziq',date:new Date().toISOString(),activeParam:S.activeParam,samples:S.filtered.length,stats:S.stats,qa:S.qa,vario:S.vario,cv:S.lastCV};
 U_downloadText('GIS-Mapping_analysis.json',JSON.stringify(out,null,2),'application/json');
 });
 }
@@ -1594,7 +1594,7 @@ for(var j=0;j<rtabs.length;j++){ rtabs[j].addEventListener('click',function(){ R
 document.getElementById('btn-demo').addEventListener('click',loadDemo);
 document.getElementById('btn-clear').addEventListener('click',clearAll);
 Router.render();
-console.log('GIS-Mapping initialized OK');
+console.log('GIS-Mapping v7 initialized OK');
 }
 document.addEventListener('DOMContentLoaded',init);
 window.onerror=function(msg){ U_toast('Application error: '+msg,'error'); return false; };
