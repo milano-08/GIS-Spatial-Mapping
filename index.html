@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GIS-Mapping v7 — Free Client-Side Heavy Metal & Mineral Contour Mapping Tool</title>
+<title>GIS-Mapping — Free Client-Side Heavy Metal & Mineral Contour Mapping Tool</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,6 +13,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <style>
 :root{
 --bg:#0f1115;--panel:#181a20;--panel2:#1e2128;--border:#2a2d35;--text:#e4e6eb;--muted:#8b92a5;
@@ -100,7 +101,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <circle cx="74" cy="24" r="8" fill="#f59e0b"></circle>
 </svg>
 <div>
-<h1>GIS-Mapping v7</h1>
+<h1>GIS-Mapping</h1>
 <p>Free Client-Side Heavy Metal &amp; Mineral Contour Mapping Tool — By Muhammad Haziq</p>
 </div>
 </div>
@@ -116,6 +117,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <div class="tab active" data-stab="data">📊 Data</div>
 <div class="tab" data-stab="map">🗺️ GIS Map</div>
 <div class="tab" data-stab="contour">🎨 Contour Studio</div>
+<div class="tab" data-stab="depth3d">🧊 3D Depth</div>
 <div class="tab" data-stab="sessions">💾 Sessions</div>
 <div class="tab" data-stab="about">ℹ️ About &amp; Cite</div>
 </nav>
@@ -127,6 +129,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <div class="tab" data-rtab="interp">🧮 Interpolation</div>
 <div class="tab" data-rtab="validation">✅ Cross-Validation</div>
 <div class="tab" data-rtab="uncertainty">σ² Uncertainty</div>
+<div class="tab" data-rtab="depth3d">🧊 3D Depth</div>
 <div class="tab" data-rtab="pubmap">🖼️ Publication Map</div>
 <div class="tab" data-rtab="report">📝 Report</div>
 <div class="tab" data-rtab="sessions">💾 Sessions</div>
@@ -158,7 +161,8 @@ lastCV:null,
 sessionKey:'gismapping_sessions_v1'
 };
 
-function U_el(tag, attrs, children){
+function $(id){ return document.getElementById(id); }
+function el(tag, attrs, children){
 var n=document.createElement(tag);
 if(attrs){
 for(var k in attrs){
@@ -180,25 +184,26 @@ n.appendChild(children);
 }
 return n;
 }
-function U_toast(msg,type){
-var box=document.getElementById('toasts');
-if(!box) return;
-var t=U_el('div',{className:'toast '+(type||'info')}, msg);
+function toast(msg,type){
+var box=$('toasts'); if(!box) return;
+var t=el('div',{className:'toast '+(type||'info')}, msg);
 box.appendChild(t);
 setTimeout(function(){ try{box.removeChild(t);}catch(e){} }, 5600);
 }
-function U_show(title,sub){
-var t=document.getElementById('ov-title'); var s=document.getElementById('ov-sub'); var o=document.getElementById('overlay');
-if(t) t.textContent=title||'Processing…'; if(s) s.textContent=sub||''; if(o) o.style.display='flex';
+function showOverlay(title,sub){
+var t=$('ov-title'), s=$('ov-sub'), o=$('overlay');
+if(t) t.textContent=title||'Processing…';
+if(s) s.textContent=sub||'';
+if(o) o.style.display='flex';
 }
-function U_hide(){ var o=document.getElementById('overlay'); if(o) o.style.display='none'; }
-function U_esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function U_fmt(v,d){ if(typeof v!=='number' || !isFinite(v)) return '—'; return v.toFixed(d==null?2:d); }
-function U_download(name,url){ var a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){ try{document.body.removeChild(a);}catch(e){} },150); }
-function U_downloadText(name,text,type){ var blob=new Blob([text],{type:type||'text/plain'}); U_download(name, URL.createObjectURL(blob)); }
-function U_get(id,def){ var el=document.getElementById(id); return el ? el.value : def; }
-function U_chk(id,def){ var el=document.getElementById(id); return el ? el.checked : !!def; }
-function U_num(id,def,min,max){ var v=parseFloat(U_get(id,def)); if(!isFinite(v)) v=def; if(min!=null && v<min) v=min; if(max!=null && v>max) v=max; return v; }
+function hideOverlay(){ var o=$('overlay'); if(o) o.style.display='none'; }
+function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt(v,d){ if(typeof v!=='number' || !isFinite(v)) return '—'; return v.toFixed(d==null?2:d); }
+function download(name,url){ var a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){ try{document.body.removeChild(a);}catch(e){} },150); }
+function downloadText(name,text,type){ var blob=new Blob([text],{type:type||'text/plain'}); download(name, URL.createObjectURL(blob)); }
+function getVal(id,def){ var x=$(id); return x ? x.value : def; }
+function getChk(id,def){ var x=$(id); return x ? x.checked : !!def; }
+function getNum(id,def,min,max){ var v=parseFloat(getVal(id,def)); if(!isFinite(v)) v=def; if(min!=null && v<min) v=min; if(max!=null && v>max) v=max; return v; }
 
 var PALS = {
 spectral:[[94,79,162],[50,136,189],[102,194,165],[171,221,164],[230,245,152],[255,255,191],[254,224,144],[253,174,97],[244,109,67],[213,62,79],[158,1,66]],
@@ -208,7 +213,7 @@ turbo:[[48,18,59],[70,93,235],[40,187,229],[29,255,176],[122,255,106],[210,236,7
 terrain:[[0,90,45],[70,130,55],[190,180,90],[170,120,70],[255,255,255]],
 grayscale:[[25,25,25],[235,235,235]]
 };
-function PAL_get(name,t){
+function palGet(name,t){
 var arr=PALS[name]||PALS.spectral;
 if(!isFinite(t)) t=0; if(t<0)t=0; if(t>1)t=1;
 var x=t*(arr.length-1), i=Math.floor(x), f=x-i;
@@ -216,7 +221,7 @@ if(i>=arr.length-1) return arr[arr.length-1];
 var a=arr[i], b=arr[i+1];
 return [Math.round(a[0]+(b[0]-a[0])*f), Math.round(a[1]+(b[1]-a[1])*f), Math.round(a[2]+(b[2]-a[2])*f)];
 }
-function PAL_css(name,t){ var c=PAL_get(name,t); return 'rgb('+c[0]+','+c[1]+','+c[2]+')'; }
+function palCss(name,t){ var c=palGet(name,t); return 'rgb('+c[0]+','+c[1]+','+c[2]+')'; }
 
 var GEO = {
 distKm:function(lat1,lon1,lat2,lon2){
@@ -237,8 +242,8 @@ var start=Math.ceil(min/step)*step, out=[];
 for(var v=start; v<=max+step*0.001; v+=step) out.push(v);
 return out;
 },
-latLabel:function(v){ return (v>=0?U_fmt(v,2)+'°N':U_fmt(-v,2)+'°S'); },
-lngLabel:function(v){ return (v>=0?U_fmt(v,2)+'°E':U_fmt(-v,2)+'°W'); },
+latLabel:function(v){ return (v>=0?fmt(v,2)+'°N':fmt(-v,2)+'°S'); },
+lngLabel:function(v){ return (v>=0?fmt(v,2)+'°E':fmt(-v,2)+'°W'); },
 hull:function(pts){
 if(pts.length<3) return pts.slice();
 var p=pts.slice().sort(function(a,b){ return a.x===b.x ? a.y-b.y : a.x-b.x; });
@@ -255,7 +260,35 @@ var map={}, i;
 for(i=0;i<S.samples.length;i++) map[S.samples[i].param]=true;
 S.params=[]; for(var p in map) if(map.hasOwnProperty(p)) S.params.push(p);
 if(!S.activeParam || S.params.indexOf(S.activeParam)<0) S.activeParam=S.params[0]||'';
-Parser_filterActive();
+filterActive();
+}
+function filterActive(){
+S.filtered=[];
+for(var i=0;i<S.samples.length;i++) if(S.samples[i].param===S.activeParam && isFinite(S.samples[i].value)) S.filtered.push(S.samples[i]);
+calcStats();
+}
+function calcStats(){
+var vals=[], i;
+for(i=0;i<S.filtered.length;i++) vals.push(S.filtered[i].value);
+var st={n:vals.length,min:NaN,max:NaN,mean:NaN,sd:NaN,median:NaN,q1:NaN,q3:NaN,iqr:NaN,outliers:0,skew:NaN,kurt:NaN};
+if(vals.length){
+vals.sort(function(a,b){return a-b;});
+st.min=vals[0]; st.max=vals[vals.length-1];
+var sum=0; for(i=0;i<vals.length;i++) sum+=vals[i];
+st.mean=sum/vals.length;
+var ss=0, cu=0, qu=0;
+for(i=0;i<vals.length;i++){ var d=vals[i]-st.mean; ss+=d*d; cu+=d*d*d; qu+=d*d*d*d; }
+st.sd=vals.length>1?Math.sqrt(ss/(vals.length-1)):0;
+if(st.sd>0){
+st.skew=(vals.length/((vals.length-1)*(vals.length-2||1)))*(cu/Math.pow(st.sd,3));
+st.kurt=((vals.length*(vals.length+1))/((vals.length-1)*(vals.length-2)*(vals.length-3||1)))*(qu/Math.pow(st.sd,4)) - (3*(vals.length-1)*(vals.length-1))/((vals.length-2)*(vals.length-3||1));
+}
+st.median=vals.length%2?vals[(vals.length-1)/2]:(vals[vals.length/2-1]+vals[vals.length/2])/2;
+st.q1=vals[Math.floor((vals.length-1)*0.25)]; st.q3=vals[Math.floor((vals.length-1)*0.75)]; st.iqr=st.q3-st.q1;
+var lo=st.q1-3*st.iqr, hi=st.q3+3*st.iqr;
+for(i=0;i<vals.length;i++) if(vals[i]<lo || vals[i]>hi) st.outliers++;
+}
+S.stats=st;
 }
 
 var PARSER = {
@@ -323,7 +356,7 @@ return {mapping:m, valueCols:numeric};
 },
 processRows:function(rows){
 try{
-if(!rows || !rows.length){ U_toast('No rows found in input.','error'); return; }
+if(!rows || !rows.length){ toast('No rows found in input.','error'); return; }
 var headers=[], first=rows[0]||{};
 for(var k in first) if(first.hasOwnProperty(k)) headers.push(k);
 S.rawRows=rows; S.headers=headers;
@@ -331,8 +364,8 @@ var det=PARSER.autoDetect(rows,headers);
 S.mapping=det.mapping; S.valueCols=det.valueCols;
 PARSER.buildSamples();
 Router.render();
-U_toast('Parsed '+S.samples.length+' observations from '+rows.length+' rows.','success');
-}catch(e){ U_toast('Parser error: '+(e&&e.message?e.message:e),'error'); }
+toast('Parsed '+S.samples.length+' observations from '+rows.length+' rows.','success');
+}catch(e){ toast('Parser error: '+(e&&e.message?e.message:e),'error'); }
 },
 readFile:function(file){
 if(!file) return;
@@ -347,11 +380,11 @@ try{
 var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
 S.wb=wb;
 if(wb.SheetNames && wb.SheetNames.length){ S.sheetName=wb.SheetNames[0]; PARSER.loadSheet(S.sheetName); }
-}catch(err){ U_toast('Excel read error: '+err.message,'error'); }
+}catch(err){ toast('Excel read error: '+err.message,'error'); }
 };
 reader.readAsArrayBuffer(file);
-}else{ U_toast('Unsupported file type. Use CSV, XLSX or XLS.','error'); }
-}catch(e){ U_toast('File read error: '+e.message,'error'); }
+}else{ toast('Unsupported file type. Use CSV, XLSX or XLS.','error'); }
+}catch(e){ toast('File read error: '+e.message,'error'); }
 },
 loadSheet:function(name){
 try{
@@ -359,13 +392,13 @@ if(!S.wb || !S.wb.Sheets[name]) return;
 S.sheetName=name;
 var rows=XLSX.utils.sheet_to_json(S.wb.Sheets[name],{defval:''});
 PARSER.processRows(rows);
-}catch(e){ U_toast('Sheet load error: '+e.message,'error'); }
+}catch(e){ toast('Sheet load error: '+e.message,'error'); }
 },
 parsePasted:function(text){
 try{
-if(!text || !text.trim()){ U_toast('Paste box is empty.','warn'); return; }
+if(!text || !text.trim()){ toast('Paste box is empty.','warn'); return; }
 Papa.parse(text,{header:true,skipEmptyLines:true,complete:function(res){ PARSER.processRows(res.data); }});
-}catch(e){ U_toast('Paste parse error: '+e.message,'error'); }
+}catch(e){ toast('Paste parse error: '+e.message,'error'); }
 },
 buildSamples:function(){
 S.samples=[];
@@ -385,15 +418,15 @@ if((!isFinite(lng) || Math.abs(lng)>180) && isFinite(lat) && Math.abs(lat)<=90){
 if(!isFinite(lat)||!isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180){ S.health.discarded++; S.qa.invalid++; continue; }
 var id=S.mapping.id?String(r[S.mapping.id]||'').trim():''; if(!id) id='S'+(i+1);
 var place=S.mapping.place?String(r[S.mapping.place]||'').trim():'';
-var key=lat.toFixed(6)+'|'+lng.toFixed(6);
-if(!S.qa.dupGroups[key]) S.qa.dupGroups[key]=0;
-S.qa.dupGroups[key]++;
 if(longMode){
 var pname=String(r[S.mapping.param]||'').trim();
 if(!pname){ S.health.discarded++; continue; }
 var pv=PARSER.parseValue(r[S.mapping.value]);
 if(!isFinite(pv.v)){ S.health.discarded++; if(pv.missing) S.qa.missing++; continue; }
 if(pv.censored){ S.health.censored++; S.qa.censored++; }
+var key=lat.toFixed(6)+'|'+lng.toFixed(6)+'|'+pname;
+if(!S.qa.dupGroups[key]) S.qa.dupGroups[key]=0;
+S.qa.dupGroups[key]++;
 S.samples.push({id:id,place:place,param:pname,lat:lat,lng:lng,value:pv.v,censored:pv.censored});
 S.health.cells++;
 }else{
@@ -401,6 +434,9 @@ for(var j=0;j<cols.length;j++){
 var pv2=PARSER.parseValue(r[cols[j]]);
 if(!isFinite(pv2.v)){ if(pv2.missing) S.qa.missing++; continue; }
 if(pv2.censored){ S.health.censored++; S.qa.censored++; }
+var key2=lat.toFixed(6)+'|'+lng.toFixed(6)+'|'+cols[j];
+if(!S.qa.dupGroups[key2]) S.qa.dupGroups[key2]=0;
+S.qa.dupGroups[key2]++;
 S.samples.push({id:id,place:place,param:cols[j],lat:lat,lng:lng,value:pv2.v,censored:pv2.censored});
 S.health.cells++;
 }
@@ -420,44 +456,18 @@ S.samples=[]; S.params=[]; S.activeParam=''; S.filtered=[]; S.stats={}; Router.r
 },
 exportCSV:function(){
 try{
-if(!S.samples.length){ U_toast('No cleaned samples to export.','warn'); return; }
+if(!S.samples.length){ toast('No cleaned samples to export.','warn'); return; }
 var lines=['SampleID,Place,Parameter,Latitude,Longitude,Value,Censored'];
 for(var i=0;i<S.samples.length;i++){
 var s=S.samples[i];
 lines.push(['"'+String(s.id).replace(/"/g,'""')+'"','"'+String(s.place).replace(/"/g,'""')+'"','"'+String(s.param).replace(/"/g,'""')+'"',s.lat,s.lng,s.value,s.censored?'yes':'no'].join(','));
 }
-U_downloadText('GIS-Mapping_cleaned_'+(S.activeParam||'all')+'.csv', lines.join('\n'), 'text/csv');
-}catch(e){ U_toast('CSV export error: '+e.message,'error'); }
+downloadText('GIS-Mapping_cleaned_'+(S.activeParam||'all')+'.csv', lines.join('\n'), 'text/csv');
+}catch(e){ toast('CSV export error: '+e.message,'error'); }
 }
 };
 
-function Parser_filterActive(){
-S.filtered=[];
-for(var i=0;i<S.samples.length;i++) if(S.samples[i].param===S.activeParam && isFinite(S.samples[i].value)) S.filtered.push(S.samples[i]);
-STATS_calc();
-}
-function STATS_calc(){
-var vals=[], i;
-for(i=0;i<S.filtered.length;i++) vals.push(S.filtered[i].value);
-var st={n:vals.length,min:NaN,max:NaN,mean:NaN,sd:NaN,median:NaN,q1:NaN,q3:NaN,iqr:NaN,outliers:0,skew:NaN,kurt:NaN};
-if(vals.length){
-vals.sort(function(a,b){return a-b;});
-st.min=vals[0]; st.max=vals[vals.length-1];
-var sum=0; for(i=0;i<vals.length;i++) sum+=vals[i];
-st.mean=sum/vals.length;
-var ss=0, cu=0, qu=0;
-for(i=0;i<vals.length;i++){ var d=vals[i]-st.mean; ss+=d*d; cu+=d*d*d; qu+=d*d*d*d; }
-st.sd=vals.length>1?Math.sqrt(ss/(vals.length-1)):0;
-if(st.sd>0){ st.skew=(vals.length/((vals.length-1)*(vals.length-2||1)))*(cu/Math.pow(st.sd,3)); st.kurt=((vals.length*(vals.length+1))/((vals.length-1)*(vals.length-2)*(vals.length-3||1)))*(qu/Math.pow(st.sd,4)) - (3*(vals.length-1)*(vals.length-1))/((vals.length-2)*(vals.length-3||1)); }
-st.median=vals.length%2?vals[(vals.length-1)/2]:(vals[vals.length/2-1]+vals[vals.length/2])/2;
-st.q1=vals[Math.floor((vals.length-1)*0.25)]; st.q3=vals[Math.floor((vals.length-1)*0.75)]; st.iqr=st.q3-st.q1;
-var lo=st.q1-3*st.iqr, hi=st.q3+3*st.iqr;
-for(i=0;i<vals.length;i++) if(vals[i]<lo || vals[i]>hi) st.outliers++;
-}
-S.stats=st;
-}
-
-function M_solve(A,b){
+function solveMatrix(A,b){
 var n=A.length, M=[], i,j,k;
 for(i=0;i<n;i++){ M[i]=A[i].slice(); M[i][n]=b[i]; }
 for(i=0;i<n;i++){
@@ -471,7 +481,7 @@ var x=[];
 for(i=n-1;i>=0;i--){ x[i]=M[i][n]; for(j=i+1;j<n;j++) x[i]-=M[i][j]*x[j]; x[i]/=M[i][i]; }
 return x;
 }
-function M_invert(A){
+function invertMatrix(A){
 var n=A.length, aug=[], i,j,k;
 for(i=0;i<n;i++){ aug[i]=[]; for(j=0;j<n;j++) aug[i][j]=A[i][j]; for(j=0;j<n;j++) aug[i][n+j]=(i===j)?1:0; }
 for(i=0;i<n;i++){
@@ -484,7 +494,7 @@ for(k=0;k<n;k++){ if(k===i) continue; var f=aug[k][i]; if(!f) continue; for(j=0;
 var inv=[]; for(i=0;i<n;i++){ inv[i]=[]; for(j=0;j<n;j++) inv[i][j]=aug[i][n+j]; }
 return inv;
 }
-function M_matVec(A,x){ var out=[]; for(var i=0;i<A.length;i++){ var s=0; for(var j=0;j<x.length;j++) s+=A[i][j]*x[j]; out[i]=s; } return out; }
+function matVec(A,x){ var out=[]; for(var i=0;i<A.length;i++){ var s=0; for(var j=0;j<x.length;j++) s+=A[i][j]*x[j]; out[i]=s; } return out; }
 
 var VARIO = {
 gamma:function(v,h){
@@ -552,8 +562,8 @@ A[n][n]=0;
 var sill=(vario.nugget||0)+(vario.psill||0);
 var ridge=Math.max(1e-8, Math.abs(sill)*1e-8);
 for(i=0;i<n;i++) A[i][i]+=ridge;
-var inv=M_invert(A);
-if(!inv){ for(i=0;i<n;i++) A[i][i]+=Math.max(1e-5, Math.abs(sill)*0.01); inv=M_invert(A); }
+var inv=invertMatrix(A);
+if(!inv){ for(i=0;i<n;i++) A[i][i]+=Math.max(1e-5, Math.abs(sill)*0.01); inv=invertMatrix(A); }
 if(!inv) return null;
 var q=[]; for(var l=0;l<size;l++){ var s=0; for(j=0;j<n;j++) s += inv[j][l]*values[j]; q[l]=s; }
 return {inv:inv,q:q,n:n,vario:vario};
@@ -630,7 +640,7 @@ var t=terms(x,y);
 for(var a=0;a<6;a++){ b[a]+=t[a]*z; for(var c=0;c<6;c++) A[a][c]+=t[a]*t[c]; }
 }
 for(i=0;i<6;i++) A[i][i]+=1e-8;
-var coeff=M_solve(A,b); if(!coeff) return null;
+var coeff=solveMatrix(A,b); if(!coeff) return null;
 return {coeff:coeff,xMin:xMin,dx:dx,yMin:yMin,dy:dy};
 },
 trendPoint:function(prep,lng,lat){
@@ -658,7 +668,7 @@ A[i][n]=1; A[i][n+1]=xs[i]; A[i][n+2]=ys[i];
 A[n][i]=1; A[n+1][i]=xs[i]; A[n+2][i]=ys[i];
 }
 for(i=0;i<n;i++) A[i][i]+=1e-5;
-var inv=M_invert(A); if(!inv){ for(i=0;i<n;i++) A[i][i]+=1e-3; inv=M_invert(A); }
+var inv=invertMatrix(A); if(!inv){ for(i=0;i<n;i++) A[i][i]+=1e-3; inv=invertMatrix(A); }
 if(!inv) return null;
 return {inv:inv,samples:samples,xs:xs,ys:ys,xMin:xMin,dx:dx,yMin:yMin,dy:dy,n:n};
 },
@@ -668,7 +678,7 @@ var x=(lng-prep.xMin)/prep.dx, y=(lat-prep.yMin)/prep.dy;
 var b=[], i;
 for(i=0;i<prep.n;i++){ var rx=x-prep.xs[i], ry=y-prep.ys[i]; var r=Math.sqrt(rx*rx+ry*ry); b[i]=(r<1e-12)?0:r*r*Math.log(r); }
 b[prep.n]=1; b[prep.n+1]=x; b[prep.n+2]=y;
-var w=M_matVec(prep.inv,b); var out=0;
+var w=matVec(prep.inv,b); var out=0;
 for(i=0;i<prep.n;i++) out += w[i]*b[i];
 out += w[prep.n] + w[prep.n+1]*x + w[prep.n+2]*y;
 return out;
@@ -679,11 +689,11 @@ var res=opts.res||120, rows=res+1, cols=res+1, grid=[], prep=null;
 var sig=S.activeParam+'|'+opts.method+'|'+opts.varioModel+'|'+opts.log+'|'+samples.length;
 if(opts.method==='ok'){
 if(!S.okPrep || S.okSig!==sig){ VARIO.fit(samples,opts.varioModel); prep=KRIG.prepare(samples,S.vario); S.okPrep=prep; S.okSig=sig; } else prep=S.okPrep;
-if(!prep){ U_toast('Kriging matrix could not be inverted; using IDW fallback.','warn'); opts.method='idw'; }
+if(!prep){ toast('Kriging matrix could not be inverted; using IDW fallback.','warn'); opts.method='idw'; }
 }else if(opts.method==='trend'){
 var key='trend|'+sig; if(!S.cache[key]) S.cache[key]=INTERP.prepareTrend(samples); prep=S.cache[key]; if(!prep) opts.method='idw';
 }else if(opts.method==='rbf'){
-var key2='rbf|'+sig; if(!S.cache[key2]) S.cache[key2]=INTERP.prepareRBF(samples); prep=S.cache[key2]; if(!prep){ U_toast('RBF limited to 220 samples in browser mode; using IDW fallback.','warn'); opts.method='idw'; }
+var key2='rbf|'+sig; if(!S.cache[key2]) S.cache[key2]=INTERP.prepareRBF(samples); prep=S.cache[key2]; if(!prep){ toast('RBF limited to 220 samples in browser mode; using IDW fallback.','warn'); opts.method='idw'; }
 }
 for(var i=0;i<rows;i++){
 var row=[], lat=b.latMin + i*(b.latMax-b.latMin)/res;
@@ -796,7 +806,7 @@ var off=document.createElement('canvas'); off.width=cols; off.height=rows;
 var octx=off.getContext('2d'); var img=octx.createImageData(cols,rows);
 for(i=0;i<rows;i++){
 for(j=0;j<cols;j++){
-var rgb=PAL_get(opts.palette,(grid[i][j]-min)/(max-min||1));
+var rgb=palGet(opts.palette,(grid[i][j]-min)/(max-min||1));
 var idx=((rows-1-i)*cols+j)*4;
 img.data[idx]=rgb[0]; img.data[idx+1]=rgb[1]; img.data[idx+2]=rgb[2]; img.data[idx+3]=255;
 }
@@ -828,10 +838,10 @@ ctx.font='11px Inter, sans-serif'; ctx.textAlign='left'; ctx.lineWidth=3; ctx.st
 }
 }
 var cbX=W-m.right+65, cbY=m.top, cbW=26, cbH=ph;
-for(i=0;i<cbH;i++){ var vv=max - (i/cbH)*(max-min); var crgb=PAL_get(opts.palette,(vv-min)/(max-min||1)); ctx.fillStyle='rgb('+crgb[0]+','+crgb[1]+','+crgb[2]+')'; ctx.fillRect(cbX,cbY+i,cbW,1.5); }
+for(i=0;i<cbH;i++){ var vv=max - (i/cbH)*(max-min); var crgb=palGet(opts.palette,(vv-min)/(max-min||1)); ctx.fillStyle='rgb('+crgb[0]+','+crgb[1]+','+crgb[2]+')'; ctx.fillRect(cbX,cbY+i,cbW,1.5); }
 ctx.strokeStyle='#111827'; ctx.lineWidth=1.4; ctx.strokeRect(cbX,cbY,cbW,cbH);
 var cts=GEO.niceTicks(min,max,6); ctx.font='12px Space Grotesk, monospace'; ctx.fillStyle='#111827'; ctx.textAlign='left';
-for(i=0;i<cts.length;i++){ var cy=cbY + cbH - ((cts[i]-min)/(max-min||1))*cbH; ctx.beginPath(); ctx.moveTo(cbX+cbW,cy); ctx.lineTo(cbX+cbW+6,cy); ctx.stroke(); ctx.fillText(U_fmt(cts[i],2),cbX+cbW+10,cy+4); }
+for(i=0;i<cts.length;i++){ var cy=cbY + cbH - ((cts[i]-min)/(max-min||1))*cbH; ctx.beginPath(); ctx.moveTo(cbX+cbW,cy); ctx.lineTo(cbX+cbW+6,cy); ctx.stroke(); ctx.fillText(fmt(cts[i],2),cbX+cbW+10,cy+4); }
 ctx.fillStyle='#b91c1c'; ctx.beginPath(); ctx.moveTo(cbX+cbW/2,cbY-18); ctx.lineTo(cbX+cbW/2-7,cbY-6); ctx.lineTo(cbX+cbW/2+7,cbY-6); ctx.closePath(); ctx.fill();
 ctx.fillStyle='#1e3a8a'; ctx.beginPath(); ctx.moveTo(cbX+cbW/2,cbY+cbH+18); ctx.lineTo(cbX+cbW/2-7,cbY+cbH+6); ctx.lineTo(cbX+cbW/2+7,cbY+cbH+6); ctx.closePath(); ctx.fill();
 ctx.save(); ctx.translate(cbX-18,cbY+cbH/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.font='bold 14px Inter, sans-serif'; ctx.fillText(opts.unit || (S.activeParam||'Value'),0,0); ctx.restore();
@@ -856,7 +866,7 @@ var methodLabel={idw:'IDW',ok:'Ordinary Kriging',rbf:'RBF Thin-Plate Spline',tre
 var sub=methodLabel+' • '+S.filtered.length+' samples • WGS84 (EPSG:4326) • grid '+opts.res+'×'+opts.res+(opts.log?' • log10-transformed':'')+(surface.surface==='variance'?' • Kriging variance surface':'');
 ctx.fillText(sub,W/2,66);
 ctx.font='12px Inter'; ctx.fillStyle='#6b7280';
-ctx.fillText('By Muhammad Haziq • GIS-Mapping v7 • '+new Date().toISOString().slice(0,10),W/2,H-22);
+ctx.fillText('By Muhammad Haziq • GIS-Mapping • '+new Date().toISOString().slice(0,10),W/2,H-22);
 return canvas;
 }
 };
@@ -870,7 +880,7 @@ esri:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/Ma
 },
 init:function(baseKey){
 try{
-var el=document.getElementById('map'); if(!el) return;
+var mapEl=$('map'); if(!mapEl) return;
 try{ if(S.map){ S.map.remove(); } }catch(e){}
 S.map=null;
 S.map=L.map('map',{worldCopyJump:true, preferCanvas:true}).setView([20,10],2);
@@ -880,196 +890,196 @@ L.control.scale({metric:true,imperial:false}).addTo(S.map);
 if(S.filtered.length){
 var markers=[], min=S.stats.min, max=S.stats.max;
 for(var i=0;i<S.filtered.length;i++){
-var s=S.filtered[i]; var t=(max-min)>0?(s.value-min)/(max-min):0.5; var color=PAL_css('spectral',t);
+var s=S.filtered[i]; var t=(max-min)>0?(s.value-min)/(max-min):0.5; var color=palCss('spectral',t);
 var mk=L.circleMarker([s.lat,s.lng],{radius:7,weight:1.5,color:'#ffffff',fillColor:color,fillOpacity:0.88});
-mk.bindPopup('<b>'+U_esc(s.id)+'</b><br>'+(s.place?('Place: '+U_esc(s.place)+'<br>'):'')+'Parameter: '+U_esc(s.param)+'<br>Value: '+U_fmt(s.value,4)+'<br>Lat: '+U_fmt(s.lat,6)+'<br>Lng: '+U_fmt(s.lng,6));
+mk.bindPopup('<b>'+esc(s.id)+'</b><br>'+(s.place?('Place: '+esc(s.place)+'<br>'):'')+'Parameter: '+esc(s.param)+'<br>Value: '+fmt(s.value,4)+'<br>Lat: '+fmt(s.lat,6)+'<br>Lng: '+fmt(s.lng,6));
 markers.push(mk);
 }
 S.markerLayer=L.layerGroup(markers).addTo(S.map);
 try{ S.map.fitBounds(S.markerLayer.getBounds(),{padding:[42,42]}); }catch(e){}
 }else{ S.map.setView([20,10],2); }
 setTimeout(function(){ try{ if(S.map) S.map.invalidateSize(); }catch(e){} },180);
-}catch(e){ U_toast('GIS map error: '+(e&&e.message?e.message:e),'error'); }
+}catch(e){ toast('GIS map error: '+(e&&e.message?e.message:e),'error'); }
 },
 setBase:function(key){
-try{ if(!S.map) return; if(S.baseLayer) S.map.removeLayer(S.baseLayer); var cfg=MAPVIEW.bases[key]||MAPVIEW.bases.osm; S.baseLayer=L.tileLayer(cfg.url,{attribution:cfg.attr,crossOrigin:true,maxZoom:19}).addTo(S.map); }catch(e){ U_toast('Basemap error: '+e.message,'error'); }
+try{ if(!S.map) return; if(S.baseLayer) S.map.removeLayer(S.baseLayer); var cfg=MAPVIEW.bases[key]||MAPVIEW.bases.osm; S.baseLayer=L.tileLayer(cfg.url,{attribution:cfg.attr,crossOrigin:true,maxZoom:19}).addTo(S.map); }catch(e){ toast('Basemap error: '+e.message,'error'); }
 },
 exportPNG:function(){
 try{
-var target=document.getElementById('map-wrap')||document.getElementById('map'); if(!target){ U_toast('Map container not found.','error'); return; }
-U_show('Exporting map PNG','Capturing current map view');
+var target=$('map-wrap')||$('map'); if(!target){ toast('Map container not found.','error'); return; }
+showOverlay('Exporting map PNG','Capturing current map view');
 setTimeout(function(){
 html2canvas(target,{useCORS:true,allowTaint:false,backgroundColor:'#ffffff',scale:2}).then(function(canvas){
-U_hide(); U_download('GIS-Mapping_map_'+(S.activeParam||'layer')+'.png',canvas.toDataURL('image/png'));
-}).catch(function(err){ U_hide(); U_toast('Map PNG export failed: '+(err&&err.message?err.message:err),'error'); });
+hideOverlay(); download('GIS-Mapping_map_'+(S.activeParam||'layer')+'.png',canvas.toDataURL('image/png'));
+}).catch(function(err){ hideOverlay(); toast('Map PNG export failed: '+(err&&err.message?err.message:err),'error'); });
 },60);
-}catch(e){ U_hide(); U_toast('Map export error: '+e.message,'error'); }
+}catch(e){ hideOverlay(); toast('Map export error: '+e.message,'error'); }
 }
 };
 
-function V_select(id,label,options,selected){
-var wrap=U_el('div'); wrap.appendChild(U_el('label',{text:label}));
-var sel=U_el('select',{id:id});
+function selectEl(id,label,options,selected){
+var wrap=el('div'); wrap.appendChild(el('label',{text:label}));
+var sel=el('select',{id:id});
 for(var i=0;i<options.length;i++){
 var o=options[i]; var val=(o && o.value!=null)?o.value:o; var txt=(o && o.text!=null)?o.text:o;
-var opt=U_el('option',{value:val,text:txt}); if(String(val)===String(selected)) opt.selected=true; sel.appendChild(opt);
+var opt=el('option',{value:val,text:txt}); if(String(val)===String(selected)) opt.selected=true; sel.appendChild(opt);
 }
 wrap.appendChild(sel); return wrap;
 }
-function V_checkbox(id,label,checked){
-var row=U_el('div',{style:'margin-top:22px'});
-var lab=U_el('label',{style:'display:flex;align-items:center;gap:6px;cursor:pointer'});
-var cb=U_el('input',{type:'checkbox',id:id}); if(checked) cb.checked=true;
+function checkboxEl(id,label,checked){
+var row=el('div',{style:'margin-top:22px'});
+var lab=el('label',{style:'display:flex;align-items:center;gap:6px;cursor:pointer'});
+var cb=el('input',{type:'checkbox',id:id}); if(checked) cb.checked=true;
 lab.appendChild(cb); lab.appendChild(document.createTextNode(label)); row.appendChild(lab); return row;
 }
-function V_text(id,label,value,placeholder){
-var wrap=U_el('div'); wrap.appendChild(U_el('label',{text:label})); wrap.appendChild(U_el('input',{type:'text',id:id,value:value||'',placeholder:placeholder||''})); return wrap;
+function textEl(id,label,value,placeholder){
+var wrap=el('div'); wrap.appendChild(el('label',{text:label})); wrap.appendChild(el('input',{type:'text',id:id,value:value||'',placeholder:placeholder||''})); return wrap;
 }
-function V_number(id,label,value,min,max,step){
-var wrap=U_el('div'); wrap.appendChild(U_el('label',{text:label})); wrap.appendChild(U_el('input',{type:'number',id:id,value:String(value),min:String(min),max:String(max),step:String(step)})); return wrap;
+function numberEl(id,label,value,min,max,step){
+var wrap=el('div'); wrap.appendChild(el('label',{text:label})); wrap.appendChild(el('input',{type:'number',id:id,value:String(value),min:String(min),max:String(max),step:String(step)})); return wrap;
 }
-function makeHeaderOptions(withBlank,blankText){
+function headerOptions(withBlank,blankText){
 var out=[]; if(withBlank) out.push({value:'',text:blankText||'— none —'});
 for(var i=0;i<S.headers.length;i++) out.push({value:S.headers[i],text:S.headers[i]});
 return out;
 }
 
-function addImportCard(root){
-var card=U_el('div',{className:'card'});
-card.appendChild(U_el('h2',{text:'📂 Import Samples'}));
-var dz=U_el('div',{className:'drop',id:'drop-zone'},'🗂️ Drag &amp; drop CSV/XLSX/XLS here, or click to browse.<br><span class="muted small">Long/wide formats, multi-sheet Excel, DMS coordinates, censored values, worldwide WGS84 lat/long.</span><input type="file" id="file-input" accept=".csv,.txt,.xlsx,.xls" style="display:none">');
+function addImport(root){
+var card=el('div',{className:'card'});
+card.appendChild(el('h2',{text:'📂 Import Samples'}));
+var dz=el('div',{className:'drop',id:'drop-zone'},'🗂️ Drag &amp; drop CSV/XLSX/XLS here, or click to browse.<br><span class="muted small">Long/wide formats, multi-sheet Excel, DMS coordinates, censored values, worldwide WGS84 lat/long.</span><input type="file" id="file-input" accept=".csv,.txt,.xlsx,.xls" style="display:none">');
 card.appendChild(dz);
 if(S.wb && S.wb.SheetNames && S.wb.SheetNames.length>1){
-var sheetRow=U_el('div',{className:'row',style:'margin-top:12px'});
+var sheetRow=el('div',{className:'row',style:'margin-top:12px'});
 var sheetOpts=[]; for(var si=0;si<S.wb.SheetNames.length;si++) sheetOpts.push({value:S.wb.SheetNames[si],text:S.wb.SheetNames[si]});
-sheetRow.appendChild(V_select('sheet-select','Workbook sheet',sheetOpts,S.sheetName));
-sheetRow.appendChild(U_el('button',{className:'btn',id:'btn-load-sheet',style:'margin-top:22px'},'Load Sheet'));
+sheetRow.appendChild(selectEl('sheet-select','Workbook sheet',sheetOpts,S.sheetName));
+sheetRow.appendChild(el('button',{className:'btn',id:'btn-load-sheet',style:'margin-top:22px'},'Load Sheet'));
 card.appendChild(sheetRow);
 }
-var pasteWrap=U_el('div',{style:'margin-top:14px'});
-pasteWrap.appendChild(U_el('label',{text:'📋 Paste Data'}));
-pasteWrap.appendChild(U_el('textarea',{id:'paste-area',placeholder:'Paste CSV or tab-separated table with header row...'}));
+var pasteWrap=el('div',{style:'margin-top:14px'});
+pasteWrap.appendChild(el('label',{text:'📋 Paste Data'}));
+pasteWrap.appendChild(el('textarea',{id:'paste-area',placeholder:'Paste CSV or tab-separated table with header row...'}));
 card.appendChild(pasteWrap);
-var actions=U_el('div',{className:'row',style:'margin-top:12px'});
-actions.appendChild(U_el('button',{className:'btn',id:'btn-paste-parse'},'⚙️ Parse & Load'));
-actions.appendChild(U_el('button',{className:'btn primary',id:'btn-demo2'},'🌍 Global Multi-Metal Demo'));
-actions.appendChild(U_el('button',{className:'btn',id:'btn-export-csv'},'⬇ Export Cleaned CSV'));
-actions.appendChild(U_el('button',{className:'btn danger',id:'btn-clear-table'},'🧹 Clear Table'));
+var actions=el('div',{className:'row',style:'margin-top:12px'});
+actions.appendChild(el('button',{className:'btn',id:'btn-paste-parse'},'⚙️ Parse & Load'));
+actions.appendChild(el('button',{className:'btn primary',id:'btn-demo2'},'🌍 Global Multi-Metal Demo'));
+actions.appendChild(el('button',{className:'btn',id:'btn-export-csv'},'⬇ Export Cleaned CSV'));
+actions.appendChild(el('button',{className:'btn danger',id:'btn-clear-table'},'🧹 Clear Table'));
 card.appendChild(actions);
 root.appendChild(card);
-document.getElementById('file-input').addEventListener('change',function(e){ if(e.target.files && e.target.files[0]) PARSER.readFile(e.target.files[0]); });
-dz.addEventListener('click',function(){ document.getElementById('file-input').click(); });
+$('file-input').addEventListener('change',function(e){ if(e.target.files && e.target.files[0]) PARSER.readFile(e.target.files[0]); });
+dz.addEventListener('click',function(){ $('file-input').click(); });
 dz.addEventListener('dragover',function(e){ e.preventDefault(); });
 dz.addEventListener('drop',function(e){ e.preventDefault(); if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) PARSER.readFile(e.dataTransfer.files[0]); });
-document.getElementById('btn-paste-parse').addEventListener('click',function(){ PARSER.parsePasted(document.getElementById('paste-area').value); });
-document.getElementById('btn-demo2').addEventListener('click',loadDemo);
-document.getElementById('btn-export-csv').addEventListener('click',PARSER.exportCSV);
-document.getElementById('btn-clear-table').addEventListener('click',function(){ if(confirm('Clear all sample rows?')) PARSER.clearTable(); });
-var sheetBtn=document.getElementById('btn-load-sheet');
-if(sheetBtn) sheetBtn.addEventListener('click',function(){ PARSER.loadSheet(document.getElementById('sheet-select').value); });
+$('btn-paste-parse').addEventListener('click',function(){ PARSER.parsePasted($('paste-area').value); });
+$('btn-demo2').addEventListener('click',loadDemo);
+$('btn-export-csv').addEventListener('click',PARSER.exportCSV);
+$('btn-clear-table').addEventListener('click',function(){ if(confirm('Clear all sample rows?')) PARSER.clearTable(); });
+var sheetBtn=$('btn-load-sheet');
+if(sheetBtn) sheetBtn.addEventListener('click',function(){ PARSER.loadSheet($('sheet-select').value); });
 }
-function addMappingCard(root){
-var card=U_el('div',{className:'card'}); card.appendChild(U_el('h2',{text:'🔗 Detected Column Mapping'}));
-if(!S.headers.length){ card.appendChild(U_el('div',{className:'alert info'},'Load data to enable column mapping overrides.')); root.appendChild(card); return; }
-var g=U_el('div',{className:'grid g6'});
-g.appendChild(V_select('map-lat','Latitude',makeHeaderOptions(true),S.mapping.lat));
-g.appendChild(V_select('map-lng','Longitude',makeHeaderOptions(true),S.mapping.lng));
-g.appendChild(V_select('map-id','Sample ID',makeHeaderOptions(true),S.mapping.id));
-g.appendChild(V_select('map-place','Place',makeHeaderOptions(true),S.mapping.place));
-g.appendChild(V_select('map-param','Parameter column (long)',makeHeaderOptions(true),S.mapping.param));
-g.appendChild(V_select('map-value','Value column (long)',makeHeaderOptions(true),S.mapping.value));
+function addMapping(root){
+var card=el('div',{className:'card'}); card.appendChild(el('h2',{text:'🔗 Detected Column Mapping'}));
+if(!S.headers.length){ card.appendChild(el('div',{className:'alert info'},'Load data to enable column mapping overrides.')); root.appendChild(card); return; }
+var g=el('div',{className:'grid g6'});
+g.appendChild(selectEl('map-lat','Latitude',headerOptions(true),S.mapping.lat));
+g.appendChild(selectEl('map-lng','Longitude',headerOptions(true),S.mapping.lng));
+g.appendChild(selectEl('map-id','Sample ID',headerOptions(true),S.mapping.id));
+g.appendChild(selectEl('map-place','Place',headerOptions(true),S.mapping.place));
+g.appendChild(selectEl('map-param','Parameter column (long)',headerOptions(true),S.mapping.param));
+g.appendChild(selectEl('map-value','Value column (long)',headerOptions(true),S.mapping.value));
 card.appendChild(g);
-card.appendChild(U_el('div',{className:'alert info small'},'Wide numeric columns detected: '+(S.valueCols.length?U_esc(S.valueCols.join(', ')):'none')+'. Leave Parameter empty for wide format.'));
+card.appendChild(el('div',{className:'alert info small'},'Wide numeric columns detected: '+(S.valueCols.length?esc(S.valueCols.join(', ')):'none')+'. Leave Parameter empty for wide format.'));
 root.appendChild(card);
 var fields=['lat','lng','id','place','param','value'];
 for(var f=0;f<fields.length;f++){
 (function(field){
-var el=document.getElementById('map-'+field);
-if(el) el.addEventListener('change',function(e){ S.mapping[field]=e.target.value; PARSER.buildSamples(); Router.render(); });
+var x=$('map-'+field);
+if(x) x.addEventListener('change',function(e){ S.mapping[field]=e.target.value; PARSER.buildSamples(); Router.render(); });
 })(fields[f]);
 }
 }
-function addHealthCard(root){
-var card=U_el('div',{className:'card'}); card.appendChild(U_el('h2',{text:'🩺 Data Health Report'}));
-var hg=U_el('div',{className:'grid g6'});
-hg.appendChild(U_el('div',{className:'stat'},'<div class="k">Rows parsed</div><div class="v">'+(S.health.parsed||0)+'</div>'));
-hg.appendChild(U_el('div',{className:'stat'},'<div class="k">Active samples</div><div class="v">'+S.filtered.length+'</div>'));
-hg.appendChild(U_el('div',{className:'stat'},'<div class="k">Cells cleaned</div><div class="v">'+(S.health.cells||0)+'</div>'));
-hg.appendChild(U_el('div',{className:'stat'},'<div class="k">Rows discarded</div><div class="v">'+(S.health.discarded||0)+'</div>'));
-hg.appendChild(U_el('div',{className:'stat'},'<div class="k">Lat/Lng repaired</div><div class="v">'+(S.health.repaired||0)+'</div>'));
-hg.appendChild(U_el('div',{className:'stat'},'<div class="k">Censored values</div><div class="v">'+(S.health.censored||0)+'</div>'));
+function addHealth(root){
+var card=el('div',{className:'card'}); card.appendChild(el('h2',{text:'🩺 Data Health Report'}));
+var hg=el('div',{className:'grid g6'});
+hg.appendChild(el('div',{className:'stat'},'<div class="k">Rows parsed</div><div class="v">'+(S.health.parsed||0)+'</div>'));
+hg.appendChild(el('div',{className:'stat'},'<div class="k">Active samples</div><div class="v">'+S.filtered.length+'</div>'));
+hg.appendChild(el('div',{className:'stat'},'<div class="k">Cells cleaned</div><div class="v">'+(S.health.cells||0)+'</div>'));
+hg.appendChild(el('div',{className:'stat'},'<div class="k">Rows discarded</div><div class="v">'+(S.health.discarded||0)+'</div>'));
+hg.appendChild(el('div',{className:'stat'},'<div class="k">Lat/Lng repaired</div><div class="v">'+(S.health.repaired||0)+'</div>'));
+hg.appendChild(el('div',{className:'stat'},'<div class="k">Censored values</div><div class="v">'+(S.health.censored||0)+'</div>'));
 card.appendChild(hg);
 if(S.stats.n){
-var sg=U_el('div',{className:'grid g6',style:'margin-top:12px'});
-sg.appendChild(U_el('div',{className:'stat'},'<div class="k">Mean</div><div class="v">'+U_fmt(S.stats.mean,4)+'</div>'));
-sg.appendChild(U_el('div',{className:'stat'},'<div class="k">Median</div><div class="v">'+U_fmt(S.stats.median,4)+'</div>'));
-sg.appendChild(U_el('div',{className:'stat'},'<div class="k">Std. Dev.</div><div class="v">'+U_fmt(S.stats.sd,4)+'</div>'));
-sg.appendChild(U_el('div',{className:'stat'},'<div class="k">Min</div><div class="v">'+U_fmt(S.stats.min,4)+'</div>'));
-sg.appendChild(U_el('div',{className:'stat'},'<div class="k">Max</div><div class="v">'+U_fmt(S.stats.max,4)+'</div>'));
-sg.appendChild(U_el('div',{className:'stat'},'<div class="k">3×IQR outliers</div><div class="v">'+(S.stats.outliers||0)+'</div>'));
+var sg=el('div',{className:'grid g6',style:'margin-top:12px'});
+sg.appendChild(el('div',{className:'stat'},'<div class="k">Mean</div><div class="v">'+fmt(S.stats.mean,4)+'</div>'));
+sg.appendChild(el('div',{className:'stat'},'<div class="k">Median</div><div class="v">'+fmt(S.stats.median,4)+'</div>'));
+sg.appendChild(el('div',{className:'stat'},'<div class="k">Std. Dev.</div><div class="v">'+fmt(S.stats.sd,4)+'</div>'));
+sg.appendChild(el('div',{className:'stat'},'<div class="k">Min</div><div class="v">'+fmt(S.stats.min,4)+'</div>'));
+sg.appendChild(el('div',{className:'stat'},'<div class="k">Max</div><div class="v">'+fmt(S.stats.max,4)+'</div>'));
+sg.appendChild(el('div',{className:'stat'},'<div class="k">3×IQR outliers</div><div class="v">'+(S.stats.outliers||0)+'</div>'));
 card.appendChild(sg);
 }
 root.appendChild(card);
 }
-function addParamTableCard(root){
-var card=U_el('div',{className:'card'}); card.appendChild(U_el('h2',{text:'⚗️ Parameter & Editable Sample Table'}));
+function addParamTable(root){
+var card=el('div',{className:'card'}); card.appendChild(el('h2',{text:'⚗️ Parameter & Editable Sample Table'}));
 if(S.params.length){
-card.appendChild(V_select('active-param','Active parameter',[{value:'',text:'— select —'}].concat(S.params.map(function(p){return {value:p,text:p};})),S.activeParam));
-}else card.appendChild(U_el('div',{className:'alert warn'},'No parameters detected yet.'));
-var addGrid=U_el('div',{className:'grid g5',style:'margin-top:12px'});
-addGrid.appendChild(V_text('add-id','New Sample ID','','S-100'));
-addGrid.appendChild(V_text('add-place','Place','','Site'));
-addGrid.appendChild(V_text('add-lat','Latitude','','34.5'));
-addGrid.appendChild(V_text('add-lng','Longitude','','71.5'));
-addGrid.appendChild(V_text('add-value','Value','','12.5'));
+card.appendChild(selectEl('active-param','Active parameter',[{value:'',text:'— select —'}].concat(S.params.map(function(p){return {value:p,text:p};})),S.activeParam));
+}else card.appendChild(el('div',{className:'alert warn'},'No parameters detected yet.'));
+var addGrid=el('div',{className:'grid g5',style:'margin-top:12px'});
+addGrid.appendChild(textEl('add-id','New Sample ID','','S-100'));
+addGrid.appendChild(textEl('add-place','Place','','Site'));
+addGrid.appendChild(textEl('add-lat','Latitude','','34.5'));
+addGrid.appendChild(textEl('add-lng','Longitude','','71.5'));
+addGrid.appendChild(textEl('add-value','Value','','12.5'));
 card.appendChild(addGrid);
-var addRow=U_el('div',{className:'row',style:'margin-top:12px'});
-addRow.appendChild(U_el('button',{className:'btn primary',id:'btn-add-row'},'➕ Add Row'));
-addRow.appendChild(U_el('div',{className:'alert info small right'},'Adds to active parameter: '+(S.activeParam?U_esc(S.activeParam):'none')+'.'));
+var addRow=el('div',{className:'row',style:'margin-top:12px'});
+addRow.appendChild(el('button',{className:'btn primary',id:'btn-add-row'},'➕ Add Row'));
+addRow.appendChild(el('div',{className:'alert info small right'},'Adds to active parameter: '+(S.activeParam?esc(S.activeParam):'none')+'.'));
 card.appendChild(addRow);
-var tbl=U_el('div',{className:'table-wrap',style:'margin-top:12px'});
+var tbl=el('div',{className:'table-wrap',style:'margin-top:12px'});
 var html='<table><thead><tr><th>#</th><th>Sample ID</th><th>Place</th><th>Param</th><th>Latitude</th><th>Longitude</th><th>Value</th><th>Censored</th></tr></thead><tbody>';
 var limit=Math.min(S.samples.length,700);
-for(var i=0;i<limit;i++){ var s=S.samples[i]; html+='<tr><td>'+(i+1)+'</td><td>'+U_esc(s.id)+'</td><td>'+U_esc(s.place)+'</td><td>'+U_esc(s.param)+'</td><td>'+U_fmt(s.lat,6)+'</td><td>'+U_fmt(s.lng,6)+'</td><td>'+U_fmt(s.value,4)+'</td><td>'+(s.censored?'yes':'no')+'</td></tr>'; }
+for(var i=0;i<limit;i++){ var s=S.samples[i]; html+='<tr><td>'+(i+1)+'</td><td>'+esc(s.id)+'</td><td>'+esc(s.place)+'</td><td>'+esc(s.param)+'</td><td>'+fmt(s.lat,6)+'</td><td>'+fmt(s.lng,6)+'</td><td>'+fmt(s.value,4)+'</td><td>'+(s.censored?'yes':'no')+'</td></tr>'; }
 html+='</tbody></table>';
 tbl.innerHTML=html; card.appendChild(tbl);
-if(S.samples.length>limit) card.appendChild(U_el('div',{className:'alert info small'},'Showing first '+limit+' of '+S.samples.length+' observations.'));
+if(S.samples.length>limit) card.appendChild(el('div',{className:'alert info small'},'Showing first '+limit+' of '+S.samples.length+' observations.'));
 root.appendChild(card);
-var ap=document.getElementById('active-param'); if(ap) ap.addEventListener('change',function(e){ S.activeParam=e.target.value; Parser_filterActive(); Router.render(); });
-var addBtn=document.getElementById('btn-add-row');
+var ap=$('active-param'); if(ap) ap.addEventListener('change',function(e){ S.activeParam=e.target.value; filterActive(); Router.render(); });
+var addBtn=$('btn-add-row');
 if(addBtn) addBtn.addEventListener('click',function(){
 try{
-var id=document.getElementById('add-id').value.trim()||('S'+(S.samples.length+1));
-var place=document.getElementById('add-place').value.trim();
-var lat=PARSER.parseCoord(document.getElementById('add-lat').value);
-var lng=PARSER.parseCoord(document.getElementById('add-lng').value);
-var pv=PARSER.parseValue(document.getElementById('add-value').value);
-if(!isFinite(lat)||!isFinite(lng)||!isFinite(pv.v)){ U_toast('Add row failed: enter valid latitude, longitude and numeric value.','error'); return; }
+var id=$('add-id').value.trim()||('S'+(S.samples.length+1));
+var place=$('add-place').value.trim();
+var lat=PARSER.parseCoord($('add-lat').value);
+var lng=PARSER.parseCoord($('add-lng').value);
+var pv=PARSER.parseValue($('add-value').value);
+if(!isFinite(lat)||!isFinite(lng)||!isFinite(pv.v)){ toast('Add row failed: enter valid latitude, longitude and numeric value.','error'); return; }
 var param=S.activeParam||'Custom';
 PARSER.addSample({id:id,place:place,param:param,lat:lat,lng:lng,value:pv.v,censored:pv.censored});
-U_toast('Row added to '+param+'.','success');
-}catch(e){ U_toast('Add row error: '+e.message,'error'); }
+toast('Row added to '+param+'.','success');
+}catch(e){ toast('Add row error: '+e.message,'error'); }
 });
 }
-function addContourCard(root, scientific){
-var card=U_el('div',{className:'card'});
-card.appendChild(U_el('h2',{text:scientific?'🧮 Interpolation Engine — Scientific':'🎨 Contour Studio'}));
-if(S.filtered.length<3){ card.appendChild(U_el('div',{className:'alert warn'},'At least 3 valid samples are required for interpolation. Load data first.')); root.appendChild(card); return; }
-var g=U_el('div',{className:'grid g4'});
-g.appendChild(V_select('ct-method','Interpolation method',[
+function addContour(root, title){
+var card=el('div',{className:'card'});
+card.appendChild(el('h2',{text:title||'🎨 Contour Studio'}));
+if(S.filtered.length<3){ card.appendChild(el('div',{className:'alert warn'},'At least 3 valid samples are required for interpolation. Load data first.')); root.appendChild(card); return; }
+var g=el('div',{className:'grid g4'});
+g.appendChild(selectEl('ct-method','Interpolation method',[
 {value:'idw',text:'IDW — Inverse Distance Weighting'},
 {value:'ok',text:'Ordinary Kriging (variogram)'},
 {value:'rbf',text:'RBF — Thin-Plate Spline'},
 {value:'trend',text:'Trend Surface (2nd-order polynomial)'},
 {value:'thiessen',text:'Nearest Neighbour (Thiessen)'}
 ],'ok'));
-g.appendChild(V_select('ct-vario-model','Kriging variogram model',[
+g.appendChild(selectEl('ct-vario-model','Kriging variogram model',[
 {value:'spherical',text:'Spherical'},
 {value:'exponential',text:'Exponential'},
 {value:'gaussian',text:'Gaussian'}
 ],S.vario.model||'spherical'));
-g.appendChild(V_number('ct-power','IDW power (p)',2,0.5,6,0.1));
-g.appendChild(V_select('ct-res','Grid resolution',[
+g.appendChild(numberEl('ct-power','IDW power (p)',2,0.5,6,0.1));
+g.appendChild(selectEl('ct-res','Grid resolution',[
 {value:'80',text:'80 × 80'},
 {value:'120',text:'120 × 120'},
 {value:'160',text:'160 × 160'},
@@ -1077,8 +1087,8 @@ g.appendChild(V_select('ct-res','Grid resolution',[
 {value:'300',text:'300 × 300'}
 ],'160'));
 card.appendChild(g);
-var g2=U_el('div',{className:'grid g4',style:'margin-top:12px'});
-g2.appendChild(V_select('ct-palette','Palette',[
+var g2=el('div',{className:'grid g4',style:'margin-top:12px'});
+g2.appendChild(selectEl('ct-palette','Palette',[
 {value:'spectral',text:'Spectral — Journal (navy→red)'},
 {value:'viridis',text:'Viridis (colorblind-safe)'},
 {value:'jet',text:'Jet (classic)'},
@@ -1086,74 +1096,74 @@ g2.appendChild(V_select('ct-palette','Palette',[
 {value:'terrain',text:'Terrain'},
 {value:'grayscale',text:'Grayscale'}
 ],'spectral'));
-g2.appendChild(V_number('ct-bands','Bands / contour density',12,3,40,1));
-g2.appendChild(V_select('ct-surface','Surface',[
+g2.appendChild(numberEl('ct-bands','Bands / contour density',12,3,40,1));
+g2.appendChild(selectEl('ct-surface','Surface',[
 {value:'prediction',text:'Prediction'},
 {value:'variance',text:'Kriging variance (σ²) — OK only'}
 ],'prediction'));
-g2.appendChild(V_select('ct-labelmode','Point labels',[
+g2.appendChild(selectEl('ct-labelmode','Point labels',[
 {value:'id',text:'Sample ID'},
 {value:'place',text:'Place Name'},
 {value:'both',text:'ID + Place'},
 {value:'none',text:'None'}
 ],'id'));
 card.appendChild(g2);
-var g3=U_el('div',{className:'grid g4',style:'margin-top:12px'});
-g3.appendChild(V_checkbox('ct-contours','Draw contour lines',true));
-g3.appendChild(V_checkbox('ct-points','Show sample points',true));
-g3.appendChild(V_checkbox('ct-log','Log10 transform (skewed data)',false));
-g3.appendChild(V_checkbox('ct-deco','North arrow, scale bar, graticule',true));
+var g3=el('div',{className:'grid g4',style:'margin-top:12px'});
+g3.appendChild(checkboxEl('ct-contours','Draw contour lines',true));
+g3.appendChild(checkboxEl('ct-points','Show sample points',true));
+g3.appendChild(checkboxEl('ct-log','Log10 transform (skewed data)',false));
+g3.appendChild(checkboxEl('ct-deco','North arrow, scale bar, graticule',true));
 card.appendChild(g3);
-var g4=U_el('div',{className:'grid g2',style:'margin-top:12px'});
-g4.appendChild(V_text('ct-title','Figure title (hard-bound to active parameter)',(S.activeParam||'')+' spatial distribution','Auto title if blank'));
-g4.appendChild(V_text('ct-unit','Unit','mg/kg','e.g. mg/kg, µg/L, pH'));
+var g4=el('div',{className:'grid g2',style:'margin-top:12px'});
+g4.appendChild(textEl('ct-title','Figure title',(S.activeParam||'')+' spatial distribution','Auto title if blank'));
+g4.appendChild(textEl('ct-unit','Unit','mg/kg','e.g. mg/kg, µg/L, pH'));
 card.appendChild(g4);
-var row=U_el('div',{className:'row',style:'margin-top:14px'});
-row.appendChild(U_el('button',{className:'btn primary',id:'ct-render'},'🎨 Render Contour Plot'));
-row.appendChild(V_select('ct-scale','Export scale',[
+var row=el('div',{className:'row',style:'margin-top:14px'});
+row.appendChild(el('button',{className:'btn primary',id:'ct-render'},'🎨 Render Contour Plot'));
+row.appendChild(selectEl('ct-scale','Export scale',[
 {value:'1',text:'1× (1700 px)'},
 {value:'2',text:'2× (3400 px)'},
 {value:'3',text:'3× (5100 px)'},
 {value:'4',text:'4× (6800 px)'}
 ],'2'));
-row.appendChild(U_el('button',{className:'btn',id:'ct-png'},'PNG'));
-row.appendChild(U_el('button',{className:'btn',id:'ct-jpg'},'JPG'));
-row.appendChild(U_el('button',{className:'btn',id:'ct-pdf'},'PDF'));
-row.appendChild(U_el('button',{className:'btn',id:'ct-fit-vario'},'Fit Variogram'));
+row.appendChild(el('button',{className:'btn',id:'ct-png'},'PNG'));
+row.appendChild(el('button',{className:'btn',id:'ct-jpg'},'JPG'));
+row.appendChild(el('button',{className:'btn',id:'ct-pdf'},'PDF'));
+row.appendChild(el('button',{className:'btn',id:'ct-fit-vario'},'Fit Variogram'));
 card.appendChild(row);
-card.appendChild(U_el('div',{id:'ct-vario-info',className:'alert info small',style:'margin-top:12px'},'Ordinary Kriging is available. Click Fit Variogram or Render to auto-fit.'));
-var wrap=U_el('div',{className:'canvas-wrap',style:'margin-top:14px'});
-wrap.appendChild(U_el('canvas',{id:'contour-canvas',width:1700,height:1150}));
+card.appendChild(el('div',{id:'ct-vario-info',className:'alert info small',style:'margin-top:12px'},'Ordinary Kriging is available. Click Fit Variogram or Render to auto-fit.'));
+var wrap=el('div',{className:'canvas-wrap',style:'margin-top:14px'});
+wrap.appendChild(el('canvas',{id:'contour-canvas',width:1700,height:1150}));
 card.appendChild(wrap);
 root.appendChild(card);
 function readOpts(){
-var method=U_get('ct-method','ok'); var surface=U_get('ct-surface','prediction');
+var method=getVal('ct-method','ok'); var surface=getVal('ct-surface','prediction');
 if(surface==='variance' && method!=='ok') surface='prediction';
 return {
-method:method, varioModel:U_get('ct-vario-model','spherical'), power:U_num('ct-power',2,0.5,6), res:parseInt(U_get('ct-res','160'),10)||160,
-palette:U_get('ct-palette','spectral'), bands:parseInt(U_get('ct-bands','12'),10)||12, surface:surface, labelMode:U_get('ct-labelmode','id'),
-contours:U_chk('ct-contours',true), points:U_chk('ct-points',true), log:U_chk('ct-log',false),
-north:U_chk('ct-deco',true), scalebar:U_chk('ct-deco',true), title:U_get('ct-title',''), unit:U_get('ct-unit','')
+method:method, varioModel:getVal('ct-vario-model','spherical'), power:getNum('ct-power',2,0.5,6), res:parseInt(getVal('ct-res','160'),10)||160,
+palette:getVal('ct-palette','spectral'), bands:parseInt(getVal('ct-bands','12'),10)||12, surface:surface, labelMode:getVal('ct-labelmode','id'),
+contours:getChk('ct-contours',true), points:getChk('ct-points',true), log:getChk('ct-log',false),
+north:getChk('ct-deco',true), scalebar:getChk('ct-deco',true), title:getVal('ct-title',''), unit:getVal('ct-unit','')
 };
 }
 function updateVarioInfo(){
-var v=S.vario; var el=document.getElementById('ct-vario-info'); if(!el) return;
-if(!v.fitted){ el.innerHTML='Ordinary Kriging is available. Click Fit Variogram or Render to auto-fit.'; return; }
-el.innerHTML='Fitted variogram: <b>'+U_esc(v.model)+'</b> • nugget = '+U_fmt(v.nugget,4)+' • partial sill = '+U_fmt(v.psill,4)+' • sill = '+U_fmt((v.nugget+v.psill),4)+' • range ≈ '+U_fmt(v.range,3)+' km • bins = '+(v.bins?v.bins.length:0)+'.';
+var v=S.vario; var x=$('ct-vario-info'); if(!x) return;
+if(!v.fitted){ x.innerHTML='Ordinary Kriging is available. Click Fit Variogram or Render to auto-fit.'; return; }
+x.innerHTML='Fitted variogram: <b>'+esc(v.model)+'</b> • nugget = '+fmt(v.nugget,4)+' • partial sill = '+fmt(v.psill,4)+' • sill = '+fmt((v.nugget+v.psill),4)+' • range ≈ '+fmt(v.range,3)+' km • bins = '+(v.bins?v.bins.length:0)+'.';
 }
 function render(scale,format,surfaceOverride){
-U_show('Rendering contour surface','High-quality grid interpolation and marching squares');
+showOverlay('Rendering contour surface','High-quality grid interpolation and marching squares');
 setTimeout(function(){
 try{
 var opts=readOpts(); if(surfaceOverride) opts.surface=surfaceOverride;
 var samples=INTERP.analysisSamples(opts.log);
 if(samples.length<3) throw new Error('At least 3 valid samples are required.');
 if(opts.method==='ok'){ VARIO.fit(samples,opts.varioModel); updateVarioInfo(); }
-if(opts.surface==='variance' && opts.method==='ok' && opts.res>90){ opts.res=90; U_toast('Kriging variance surface uses 90×90 grid in browser mode for stability.','info'); }
+if(opts.surface==='variance' && opts.method==='ok' && opts.res>90){ opts.res=90; toast('Kriging variance surface uses 90×90 grid in browser mode for stability.','info'); }
 var surface=INTERP.generate(opts,samples);
-var canvas=document.getElementById('contour-canvas');
+var canvas=$('contour-canvas');
 CONTOUR.draw(canvas,surface,opts,scale||1);
-U_hide();
+hideOverlay();
 if(format){
 if(format==='pdf'){
 try{
@@ -1164,50 +1174,50 @@ var ratio=Math.min((pw-50)/canvas.width,(ph-80)/canvas.height);
 var w=canvas.width*ratio, h=canvas.height*ratio;
 pdf.addImage(img,'JPEG',(pw-w)/2,20,w,h);
 pdf.setFontSize(9);
-pdf.text('GIS-Mapping v7 — By Muhammad Haziq • Parameter: '+(S.activeParam||'')+' • Method: '+opts.method+' • Date: '+new Date().toISOString().slice(0,10), 25, ph-18);
+pdf.text('GIS-Mapping — By Muhammad Haziq • Parameter: '+(S.activeParam||'')+' • Method: '+opts.method+' • Date: '+new Date().toISOString().slice(0,10), 25, ph-18);
 pdf.save('GIS-Mapping_contour_'+(S.activeParam||'map')+'.pdf');
-}catch(e){ U_toast('PDF export error: '+e.message,'error'); }
+}catch(e){ toast('PDF export error: '+e.message,'error'); }
 }else{
 var mime=(format==='jpg')?'image/jpeg':'image/png';
-U_download('GIS-Mapping_contour_'+(S.activeParam||'map')+'.'+format, canvas.toDataURL(mime,0.95));
+download('GIS-Mapping_contour_'+(S.activeParam||'map')+'.'+format, canvas.toDataURL(mime,0.95));
 }
-}else{ U_toast('Contour plot rendered.','success'); }
-}catch(e){ U_hide(); U_toast('Contour rendering error: '+(e&&e.message?e.message:e),'error'); }
+}else{ toast('Contour plot rendered.','success'); }
+}catch(e){ hideOverlay(); toast('Contour rendering error: '+(e&&e.message?e.message:e),'error'); }
 },40);
 }
-document.getElementById('ct-render').addEventListener('click',function(){ render(1,null,null); });
-document.getElementById('ct-png').addEventListener('click',function(){ render(parseInt(U_get('ct-scale','2'),10)||2,'png',null); });
-document.getElementById('ct-jpg').addEventListener('click',function(){ render(parseInt(U_get('ct-scale','2'),10)||2,'jpg',null); });
-document.getElementById('ct-pdf').addEventListener('click',function(){ render(2,'pdf',null); });
-document.getElementById('ct-fit-vario').addEventListener('click',function(){
-try{ var opts=readOpts(); var samples=INTERP.analysisSamples(opts.log); VARIO.fit(samples,opts.varioModel); updateVarioInfo(); U_toast('Variogram fitted: '+S.vario.model+'.','success'); }catch(e){ U_toast('Variogram fit error: '+e.message,'error'); }
+$('ct-render').addEventListener('click',function(){ render(1,null,null); });
+$('ct-png').addEventListener('click',function(){ render(parseInt(getVal('ct-scale','2'),10)||2,'png',null); });
+$('ct-jpg').addEventListener('click',function(){ render(parseInt(getVal('ct-scale','2'),10)||2,'jpg',null); });
+$('ct-pdf').addEventListener('click',function(){ render(2,'pdf',null); });
+$('ct-fit-vario').addEventListener('click',function(){
+try{ var opts=readOpts(); var samples=INTERP.analysisSamples(opts.log); VARIO.fit(samples,opts.varioModel); updateVarioInfo(); toast('Variogram fitted: '+S.vario.model+'.','success'); }catch(e){ toast('Variogram fit error: '+e.message,'error'); }
 });
 updateVarioInfo();
 }
-function addSessionsCard(root){
-var card=U_el('div',{className:'card'});
-card.appendChild(U_el('h2',{text:'💾 Save Current Session'}));
-card.appendChild(U_el('div',{className:'alert info'},'Explicit save only. 100% local and private. Nothing is auto-saved.'));
-var row=U_el('div',{className:'row'});
-row.appendChild(V_text('session-name','Session name','','e.g. River soil Pb survey'));
-row.appendChild(U_el('button',{className:'btn primary',id:'session-save',style:'margin-top:22px'},'💾 Save Session Snapshot'));
-row.appendChild(U_el('button',{className:'btn',id:'session-export',style:'margin-top:22px'},'⬇ Export JSON'));
-row.appendChild(U_el('button',{className:'btn',id:'session-import-btn',style:'margin-top:22px'},'⬆ Import JSON'));
-row.appendChild(U_el('button',{className:'btn danger',id:'session-delete-all',style:'margin-top:22px'},'🗑 Delete All'));
+function addSessions(root){
+var card=el('div',{className:'card'});
+card.appendChild(el('h2',{text:'💾 Save Current Session'}));
+card.appendChild(el('div',{className:'alert info'},'Explicit save only. 100% local and private. Nothing is auto-saved.'));
+var row=el('div',{className:'row'});
+row.appendChild(textEl('session-name','Session name','','e.g. River soil Pb survey'));
+row.appendChild(el('button',{className:'btn primary',id:'session-save',style:'margin-top:22px'},'💾 Save Session Snapshot'));
+row.appendChild(el('button',{className:'btn',id:'session-export',style:'margin-top:22px'},'⬇ Export JSON'));
+row.appendChild(el('button',{className:'btn',id:'session-import-btn',style:'margin-top:22px'},'⬆ Import JSON'));
+row.appendChild(el('button',{className:'btn danger',id:'session-delete-all',style:'margin-top:22px'},'🗑 Delete All'));
 card.appendChild(row);
-card.appendChild(U_el('input',{type:'file',id:'session-file',accept:'application/json',style:'display:none'}));
-card.appendChild(U_el('h3',{text:'🗄️ Saved Sessions Dashboard'}));
-card.appendChild(U_el('div',{id:'session-list'}));
+card.appendChild(el('input',{type:'file',id:'session-file',accept:'application/json',style:'display:none'}));
+card.appendChild(el('h3',{text:'🗄️ Saved Sessions Dashboard'}));
+card.appendChild(el('div',{id:'session-list'}));
 root.appendChild(card);
 function all(){ try{ return JSON.parse(localStorage.getItem(S.sessionKey)||'{}'); }catch(e){ return {}; } }
 function renderList(){
-var box=document.getElementById('session-list'); var data=all(), keys=[];
+var box=$('session-list'); var data=all(), keys=[];
 for(var k in data) if(data.hasOwnProperty(k)) keys.push(k);
 if(!keys.length){ box.innerHTML='<div class="alert info">No saved sessions yet.</div>'; return; }
 var html='<div class="table-wrap"><table><thead><tr><th>Name</th><th>Saved</th><th>Active parameter</th><th>Observations</th><th>Actions</th></tr></thead><tbody>';
 for(var i=0;i<keys.length;i++){
 var sess=data[keys[i]];
-html+='<tr><td>'+U_esc(keys[i])+'</td><td>'+U_esc(sess.date||'')+'</td><td>'+U_esc(sess.activeParam||'')+'</td><td>'+((sess.samples&&sess.samples.length)||0)+'</td><td><button class="btn small" data-i="'+i+'">Load</button> <button class="btn small danger" data-d="'+i+'">Delete</button></td></tr>';
+html+='<tr><td>'+esc(keys[i])+'</td><td>'+esc(sess.date||'')+'</td><td>'+esc(sess.activeParam||'')+'</td><td>'+((sess.samples&&sess.samples.length)||0)+'</td><td><button class="btn small" data-i="'+i+'">Load</button> <button class="btn small danger" data-d="'+i+'">Delete</button></td></tr>';
 }
 html+='</tbody></table></div>';
 box.innerHTML=html;
@@ -1216,7 +1226,7 @@ for(var l=0;l<loads.length;l++){
 loads[l].addEventListener('click',function(){
 var idx=parseInt(this.getAttribute('data-i'),10); var name=keys[idx]; var d=all(); if(!d[name]) return;
 S.samples=d[name].samples||[]; S.mapping=d[name].mapping||{lat:'',lng:'',id:'',place:'',param:'',value:''}; S.valueCols=d[name].valueCols||[];
-deriveParams(); S.activeParam=d[name].activeParam||S.activeParam; Parser_filterActive(); Router.go(S.mode==='simple'?'sessions':'sessions'); U_toast('Session loaded.','success');
+deriveParams(); S.activeParam=d[name].activeParam||S.activeParam; filterActive(); Router.render(); toast('Session loaded.','success');
 });
 }
 var dels=box.querySelectorAll('[data-d]');
@@ -1227,112 +1237,286 @@ localStorage.setItem(S.sessionKey,JSON.stringify(dd)); renderList();
 });
 }
 }
-document.getElementById('session-save').addEventListener('click',function(){
+$('session-save').addEventListener('click',function(){
 try{
-var name=document.getElementById('session-name').value.trim()||('Session '+new Date().toISOString());
+var name=$('session-name').value.trim()||('Session '+new Date().toISOString());
 var d=all(); d[name]={date:new Date().toISOString(),activeParam:S.activeParam,mapping:S.mapping,valueCols:S.valueCols,samples:S.samples.slice(0,5000)};
-localStorage.setItem(S.sessionKey,JSON.stringify(d)); renderList(); U_toast('Session saved locally.','success');
-}catch(e){ U_toast('Session save error: '+e.message,'error'); }
+localStorage.setItem(S.sessionKey,JSON.stringify(d)); renderList(); toast('Session saved locally.','success');
+}catch(e){ toast('Session save error: '+e.message,'error'); }
 });
-document.getElementById('session-export').addEventListener('click',function(){ U_downloadText('GIS-Mapping_sessions.json', JSON.stringify(all(),null,2), 'application/json'); });
-document.getElementById('session-import-btn').addEventListener('click',function(){ document.getElementById('session-file').click(); });
-document.getElementById('session-file').addEventListener('change',function(e){
+$('session-export').addEventListener('click',function(){ downloadText('GIS-Mapping_sessions.json', JSON.stringify(all(),null,2), 'application/json'); });
+$('session-import-btn').addEventListener('click',function(){ $('session-file').click(); });
+$('session-file').addEventListener('change',function(e){
 var f=e.target.files && e.target.files[0]; if(!f) return;
 var reader=new FileReader();
 reader.onload=function(ev){
-try{ var imported=JSON.parse(ev.target.result); var current=all(); for(var k in imported) if(imported.hasOwnProperty(k)) current[k]=imported[k]; localStorage.setItem(S.sessionKey,JSON.stringify(current)); renderList(); U_toast('Sessions imported.','success'); }catch(err){ U_toast('Import error: '+err.message,'error'); }
+try{ var imported=JSON.parse(ev.target.result); var current=all(); for(var k in imported) if(imported.hasOwnProperty(k)) current[k]=imported[k]; localStorage.setItem(S.sessionKey,JSON.stringify(current)); renderList(); toast('Sessions imported.','success'); }catch(err){ toast('Import error: '+err.message,'error'); }
 };
 reader.readAsText(f);
 });
-document.getElementById('session-delete-all').addEventListener('click',function(){ localStorage.removeItem(S.sessionKey); renderList(); U_toast('All sessions deleted.','warn'); });
+$('session-delete-all').addEventListener('click',function(){ localStorage.removeItem(S.sessionKey); renderList(); toast('All sessions deleted.','warn'); });
 renderList();
 }
-function addAboutCard(root){
-var card=U_el('div',{className:'card'});
-card.appendChild(U_el('h2',{text:'🌍 About GIS-Mapping'}));
+function addAbout(root){
+var card=el('div',{className:'card'});
+card.appendChild(el('h2',{text:'🌍 About GIS-Mapping'}));
 card.innerHTML += '<p><b>GIS-Mapping</b> is a standard, publication-grade, client-side Environmental GIS platform for spatial analysis and mapping of heavy metals, minerals, soil, water and weather parameters — anywhere on Earth (WGS84 latitude/longitude).</p>' +
 '<ul style="margin:12px 0 12px 20px;line-height:1.8">' +
 '<li>Interpolators: IDW, Ordinary Kriging with fitted variogram, RBF thin-plate spline, 2nd-order trend surface, Thiessen nearest-neighbour.</li>' +
-'<li>Scientific workflow: QA/QC, descriptive statistics, spatial diagnostics, interpolation, cross-validation, uncertainty, publication map, report.</li>' +
+'<li>Scientific workflow: QA/QC, descriptive statistics, spatial diagnostics, interpolation, cross-validation, uncertainty, 3D depth visualization, publication map, report.</li>' +
 '<li>High-resolution contour mapping with marching-squares contours, graticule, scale bar, north arrow, colorbar, 4× PNG/JPG/PDF export.</li>' +
 '<li>100% private: all processing runs inside your browser. No uploads, no accounts, no auto-save.</li>' +
 '</ul>' +
 '<div class="alert info"><b>Developed by Muhammad Haziq.</b></div>' +
-'<h3>Scientific note</h3><p class="small muted">GIS-Mapping implements standard spatial interpolation and geostatistical workflows, including IDW, Ordinary Kriging, RBF thin-plate spline, trend surface, and nearest-neighbour methods. Variogram diagnostics and cross-validation support transparent, reproducible research and publication mapping.</p>' +
-'<h3>How to Cite</h3><div class="code small">Haziq, M. (2026). GIS-Mapping: Free Client-Side Heavy Metal &amp; Mineral Contour Mapping Tool (v7) [Web application].</div>';
+'<h3>Scientific note</h3><p class="small muted">GIS-Mapping implements standard spatial interpolation and geostatistical workflows, including IDW, Ordinary Kriging, RBF thin-plate spline, trend surface, nearest-neighbour methods, and 3D depth visualization. Variogram diagnostics and cross-validation support transparent, reproducible research and publication mapping.</p>' +
+'<h3>How to Cite</h3><div class="code small">Haziq, M. (2026). GIS-Mapping: Free Client-Side Heavy Metal &amp; Mineral Contour Mapping Tool (v7) https://milano-08.github.io/GIS-Spatial-Mapping/.</div>';
 root.appendChild(card);
 }
 
-var VIEWS = {
-simpleData:function(root){ addImportCard(root); addMappingCard(root); addHealthCard(root); addParamTableCard(root); },
-simpleMap:function(root){
-var card=U_el('div',{className:'card'});
-card.appendChild(U_el('h2',{text:'🗺️ GIS Map'}));
-var controls=U_el('div',{className:'row'});
-controls.appendChild(V_select('map-base','Basemap',[
+var DEPTH3D = {
+norm:function(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); },
+findCol:function(headers, aliases){
+for(var i=0;i<headers.length;i++){
+var n=DEPTH3D.norm(headers[i]);
+for(var j=0;j<aliases.length;j++){
+if(n===aliases[j]) return headers[i];
+}
+}
+return '';
+},
+parseDepth:function(raw){
+if(raw==null || raw==='') return NaN;
+var s=String(raw).trim();
+var nums=s.match(/-?\d+(?:\.\d+)?/g);
+if(!nums || !nums.length) return NaN;
+if(nums.length>=2 && /-|–|to/i.test(s)){
+return (parseFloat(nums[0])+parseFloat(nums[1]))/2;
+}
+return parseFloat(nums[0]);
+},
+typeToDepth:function(typeVal, shallow, deep){
+var t=String(typeVal||'').toLowerCase();
+if(/piez|pump|shallow|monitoring/.test(t)) return shallow;
+if(/bore|deep|tube|well|production/.test(t)) return deep;
+return NaN;
+}
+};
+
+function view_simpleData(root){ addImport(root); addMapping(root); addHealth(root); addParamTable(root); }
+function view_simpleMap(root){
+var card=el('div',{className:'card'});
+card.appendChild(el('h2',{text:'🗺️ GIS Map'}));
+var controls=el('div',{className:'row'});
+controls.appendChild(selectEl('map-base','Basemap',[
 {value:'osm',text:'OpenStreetMap'},
 {value:'positron',text:'Positron Light'},
 {value:'dark',text:'Dark Matter'},
 {value:'esri',text:'Esri Satellite'}
 ],'osm'));
-controls.appendChild(U_el('button',{className:'btn',id:'map-fit',style:'margin-top:22px'},'🎯 Fit Bounds'));
-controls.appendChild(U_el('button',{className:'btn primary',id:'map-export',style:'margin-top:22px'},'📸 Export Map PNG'));
-controls.appendChild(U_el('div',{className:'alert info small right',style:'margin:0;max-width:430px'},'Showing '+(S.activeParam?U_esc(S.activeParam):'—')+'. Point color scales with value; hover/click markers for metadata.'));
+controls.appendChild(el('button',{className:'btn',id:'map-fit',style:'margin-top:22px'},'🎯 Fit Bounds'));
+controls.appendChild(el('button',{className:'btn primary',id:'map-export',style:'margin-top:22px'},'📸 Export Map PNG'));
+controls.appendChild(el('div',{className:'alert info small right',style:'margin:0;max-width:430px'},'Showing '+(S.activeParam?esc(S.activeParam):'—')+'. Point color scales with value; hover/click markers for metadata.'));
 card.appendChild(controls);
-var wrap=U_el('div',{id:'map-wrap',style:'margin-top:14px'}); wrap.appendChild(U_el('div',{id:'map'})); card.appendChild(wrap);
+var wrap=el('div',{id:'map-wrap',style:'margin-top:14px'}); wrap.appendChild(el('div',{id:'map'})); card.appendChild(wrap);
 root.appendChild(card);
-if(!S.filtered.length) card.appendChild(U_el('div',{className:'alert warn'},'No valid samples for the active parameter. Load data first.'));
+if(!S.filtered.length) card.appendChild(el('div',{className:'alert warn'},'No valid samples for the active parameter. Load data first.'));
 setTimeout(function(){
 MAPVIEW.init('osm');
-var base=document.getElementById('map-base'); if(base) base.addEventListener('change',function(e){ MAPVIEW.setBase(e.target.value); });
-var fit=document.getElementById('map-fit'); if(fit) fit.addEventListener('click',function(){ try{ if(S.map && S.markerLayer) S.map.fitBounds(S.markerLayer.getBounds(),{padding:[42,42]}); }catch(e){} });
-var ex=document.getElementById('map-export'); if(ex) ex.addEventListener('click',MAPVIEW.exportPNG);
+var base=$('map-base'); if(base) base.addEventListener('change',function(e){ MAPVIEW.setBase(e.target.value); });
+var fit=$('map-fit'); if(fit) fit.addEventListener('click',function(){ try{ if(S.map && S.markerLayer) S.map.fitBounds(S.markerLayer.getBounds(),{padding:[42,42]}); }catch(e){} });
+var ex=$('map-export'); if(ex) ex.addEventListener('click',MAPVIEW.exportPNG);
 },50);
+}
+function view_simpleContour(root){ addContour(root,'🎨 Contour Studio'); }
+function view_depth3D(root){
+var card=el('div',{className:'card'});
+card.appendChild(el('h2',{text:'🧊 3D Depth Map'}));
+if(!window.Plotly){
+card.appendChild(el('div',{className:'alert error'},'Plotly library is not loaded. Check your internet connection or add Plotly CDN script tag.'));
+root.appendChild(card);
+return;
+}
+card.appendChild(el('div',{className:'alert info'},
+'For publication, use a measured numeric Depth_m column. If no depth column exists, the app can use Type-based schematic depths (Piezometer/Borehole), but this must be clearly labeled as interpreted depth.'));
+if(!S.rawRows || !S.rawRows.length){
+card.appendChild(el('div',{className:'alert warn'},'Load the original CSV/XLSX file in the Data tab first. Sessions do not store full depth/type columns.'));
+root.appendChild(card);
+return;
+}
+var headerOpts=[{value:'',text:'Auto detect'}];
+for(var i=0;i<S.headers.length;i++) headerOpts.push({value:S.headers[i],text:S.headers[i]});
+var paramOpts=[];
+for(i=0;i<S.params.length;i++) paramOpts.push({value:S.params[i],text:S.params[i]});
+var controls=el('div',{className:'grid g4'});
+controls.appendChild(selectEl('d3-param','Parameter / Metal',paramOpts,S.activeParam||''));
+controls.appendChild(selectEl('d3-depth-col','Depth column',headerOpts,
+DEPTH3D.findCol(S.headers,['depth','depthm','depthmetres','depthmeters','z','welldepth','samplingdepth','topdepth','bottomdepth'])));
+controls.appendChild(selectEl('d3-type-col','Type column',headerOpts,
+DEPTH3D.findCol(S.headers,['type','welltype','sampletype','sourcetype','installationtype'])));
+controls.appendChild(selectEl('d3-id-col','Sample ID column',headerOpts,
+S.mapping.id||DEPTH3D.findCol(S.headers,['sampleid','id','sample','site','station'])));
+card.appendChild(controls);
+var controls2=el('div',{className:'grid g4',style:'margin-top:12px'});
+controls2.appendChild(checkboxEl('d3-pseudo','Use schematic depths when no Depth column',true));
+controls2.appendChild(numberEl('d3-shallow','Piezometer / shallow depth (m)',15,0,5000,1));
+controls2.appendChild(numberEl('d3-deep','Borehole / deep depth (m)',60,0,5000,1));
+controls2.appendChild(textEl('d3-title','Figure title','','Auto'));
+card.appendChild(controls2);
+var btnRow=el('div',{className:'row',style:'margin-top:12px'});
+btnRow.appendChild(el('button',{className:'btn primary',id:'d3-render'},'🧊 Render 3D Depth Map'));
+btnRow.appendChild(el('button',{className:'btn',id:'d3-png'},'📸 Export PNG'));
+btnRow.appendChild(el('div',{className:'alert warn small right',style:'margin:0;max-width:520px'},
+'Depth axis is interpreted as depth below ground. For journals, use measured depths wherever possible.'));
+card.appendChild(btnRow);
+var plot=el('div',{id:'d3-plot',style:'height:720px;margin-top:14px;background:#fff;border:1px solid var(--border);border-radius:8px'});
+card.appendChild(plot);
+root.appendChild(card);
+function buildData(){
+var param=getVal('d3-param','');
+var depthCol=getVal('d3-depth-col','');
+var typeCol=getVal('d3-type-col','');
+var idCol=getVal('d3-id-col','');
+var usePseudo=getChk('d3-pseudo',true);
+var shallow=getNum('d3-shallow',15,0,100000);
+var deep=getNum('d3-deep',60,0,100000);
+var latCol=S.mapping.lat;
+var lngCol=S.mapping.lng;
+var paramCol=S.mapping.param;
+var valCol=S.mapping.value;
+if(!latCol || !lngCol || !paramCol || !valCol){
+toast('3D depth map currently supports long-format data with detected Parameter and Value columns.','warn');
+return null;
+}
+var locCol=S.mapping.place || DEPTH3D.findCol(S.headers,['location','place','sitename','stationname','name','area','region']);
+var xs=[],ys=[],zs=[],vals=[],texts=[],symbols=[],sizes=[];
+var min=Infinity,max=-Infinity,missingDepth=0;
+for(var r=0;r<S.rawRows.length;r++){
+var row=S.rawRows[r];
+var p=String(row[paramCol]||'').trim();
+if(p!==param) continue;
+var pv=PARSER.parseValue(row[valCol]);
+if(!isFinite(pv.v)) continue;
+var lat=PARSER.parseCoord(row[latCol]);
+var lng=PARSER.parseCoord(row[lngCol]);
+if(!isFinite(lat) || !isFinite(lng)) continue;
+var depth=NaN;
+if(depthCol) depth=DEPTH3D.parseDepth(row[depthCol]);
+if(!isFinite(depth)){
+if(usePseudo && typeCol) depth=DEPTH3D.typeToDepth(row[typeCol], shallow, deep);
+}
+if(!isFinite(depth)){ missingDepth++; continue; }
+var id=idCol?String(row[idCol]||''):'S'+(r+1);
+var type=typeCol?String(row[typeCol]||''):'';
+var loc=locCol?String(row[locCol]||''):'';
+xs.push(lng); ys.push(lat); zs.push(depth); vals.push(pv.v);
+var hover=[id,loc,type,param+': '+fmt(pv.v,4),'Depth: '+fmt(depth,1)+' m'].join('<br>');
+texts.push(hover);
+var tl=type.toLowerCase();
+if(/piez|pump|shallow/.test(tl)) symbols.push('circle');
+else if(/bore|deep|well/.test(tl)) symbols.push('square');
+else symbols.push('diamond');
+if(pv.v<min) min=pv.v;
+if(pv.v>max) max=pv.v;
+}
+if(!xs.length){
+toast('No valid 3D points found. Add a Depth_m column or enable schematic depth with Type column.','error');
+return null;
+}
+for(var k=0;k<vals.length;k++){
+var norm=(max-min)>0?(vals[k]-min)/(max-min):0.5;
+sizes.push(4+9*norm);
+}
+return {xs:xs,ys:ys,zs:zs,vals:vals,texts:texts,symbols:symbols,sizes:sizes,min:min,max:max,missingDepth:missingDepth,param:param};
+}
+function renderPlot(){
+var d=buildData(); if(!d) return;
+var trace={
+type:'scatter3d',
+mode:'markers',
+x:d.xs,
+y:d.ys,
+z:d.zs,
+text:d.texts,
+hoverinfo:'text',
+marker:{
+size:d.sizes,
+color:d.vals,
+colorscale:'Viridis',
+opacity:0.88,
+colorbar:{title:d.param},
+cmin:d.min,
+cmax:d.max
 },
-simpleContour:function(root){ addContourCard(root,false); },
-sciQA:function(root){
-addImportCard(root); addMappingCard(root);
-var qcard=U_el('div',{className:'card'}); qcard.appendChild(U_el('h2',{text:'🧪 QA/QC Diagnostics'}));
-var qg=U_el('div',{className:'grid g6'});
-qg.appendChild(U_el('div',{className:'stat'},'<div class="k">Invalid coordinates discarded</div><div class="v">'+(S.qa.invalid||0)+'</div>'));
-qg.appendChild(U_el('div',{className:'stat'},'<div class="k">Swapped repaired</div><div class="v">'+(S.qa.swapped||0)+'</div>'));
-qg.appendChild(U_el('div',{className:'stat'},'<div class="k">Duplicate coordinate records</div><div class="v">'+(S.qa.duplicates||0)+'</div>'));
-qg.appendChild(U_el('div',{className:'stat'},'<div class="k">Censored values</div><div class="v">'+(S.qa.censored||0)+'</div>'));
-qg.appendChild(U_el('div',{className:'stat'},'<div class="k">Missing/non-numeric</div><div class="v">'+(S.qa.missing||0)+'</div>'));
-qg.appendChild(U_el('div',{className:'stat'},'<div class="k">Active samples</div><div class="v">'+S.filtered.length+'</div>'));
+symbol:d.symbols
+};
+var title=getVal('d3-title','') || (d.param+' — 3D depth distribution');
+var layout={
+margin:{l:0,r:0,t:50,b:0},
+title:{text:title,font:{size:18}},
+scene:{
+xaxis:{title:'Longitude (°E)'},
+yaxis:{title:'Latitude (°N)'},
+zaxis:{title:'Depth (m below ground)',autorange:'reversed'}
+},
+paper_bgcolor:'#ffffff',
+font:{family:'Inter, Arial',color:'#111827'}
+};
+Plotly.newPlot('d3-plot',[trace],layout,{responsive:true,displaylogo:false});
+if(d.missingDepth>0) toast(d.missingDepth+' point(s) skipped because depth was missing.','warn');
+}
+$('d3-render').addEventListener('click',renderPlot);
+$('d3-png').addEventListener('click',function(){
+try{
+Plotly.downloadImage('d3-plot',{format:'png',width:1800,height:1100,filename:'GIS-Mapping_3D_depth_'+(getVal('d3-param','map')||'map')});
+}catch(e){ toast('PNG export error: '+e.message,'error'); }
+});
+setTimeout(renderPlot,80);
+}
+function view_sessions(root){ addSessions(root); }
+function view_about(root){ addAbout(root); }
+function view_sciQA(root){
+addImport(root); addMapping(root);
+var qcard=el('div',{className:'card'}); qcard.appendChild(el('h2',{text:'🧪 QA/QC Diagnostics'}));
+var qg=el('div',{className:'grid g6'});
+qg.appendChild(el('div',{className:'stat'},'<div class="k">Invalid coordinates discarded</div><div class="v">'+(S.qa.invalid||0)+'</div>'));
+qg.appendChild(el('div',{className:'stat'},'<div class="k">Swapped repaired</div><div class="v">'+(S.qa.swapped||0)+'</div>'));
+qg.appendChild(el('div',{className:'stat'},'<div class="k">Duplicate coordinate records</div><div class="v">'+(S.qa.duplicates||0)+'</div>'));
+qg.appendChild(el('div',{className:'stat'},'<div class="k">Censored values</div><div class="v">'+(S.qa.censored||0)+'</div>'));
+qg.appendChild(el('div',{className:'stat'},'<div class="k">Missing/non-numeric</div><div class="v">'+(S.qa.missing||0)+'</div>'));
+qg.appendChild(el('div',{className:'stat'},'<div class="k">Active samples</div><div class="v">'+S.filtered.length+'</div>'));
 qcard.appendChild(qg);
-qcard.appendChild(U_el('div',{className:'alert info small'},'Censored values such as ND, BDL, <LOD are retained as numeric detections in this build; interpret them carefully and report them in the methods.'));
+qcard.appendChild(el('div',{className:'alert info small'},'Censored values such as ND, BDL, <LOD are retained as numeric detections in this build; interpret them carefully and report them in the methods.'));
 root.appendChild(qcard);
-addHealthCard(root); addParamTableCard(root);
-},
-sciStats:function(root){
-var card=U_el('div',{className:'card'}); card.appendChild(U_el('h2',{text:'📈 Descriptive Statistics — '+(S.activeParam||'—')}));
-if(!S.stats.n){ card.appendChild(U_el('div',{className:'alert warn'},'No active parameter data loaded.')); root.appendChild(card); return; }
+addHealth(root); addParamTable(root);
+}
+function view_sciStats(root){
+var card=el('div',{className:'card'}); card.appendChild(el('h2',{text:'📈 Descriptive Statistics — '+(S.activeParam||'—')}));
+if(!S.stats.n){ card.appendChild(el('div',{className:'alert warn'},'No active parameter data loaded.')); root.appendChild(card); return; }
 var html='<div class="table-wrap"><table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>';
 html+='<tr><td>Count</td><td>'+S.stats.n+'</td></tr>';
-html+='<tr><td>Minimum</td><td>'+U_fmt(S.stats.min,4)+'</td></tr>';
-html+='<tr><td>Maximum</td><td>'+U_fmt(S.stats.max,4)+'</td></tr>';
-html+='<tr><td>Mean</td><td>'+U_fmt(S.stats.mean,4)+'</td></tr>';
-html+='<tr><td>Median</td><td>'+U_fmt(S.stats.median,4)+'</td></tr>';
-html+='<tr><td>Std. deviation</td><td>'+U_fmt(S.stats.sd,4)+'</td></tr>';
-html+='<tr><td>Q1</td><td>'+U_fmt(S.stats.q1,4)+'</td></tr>';
-html+='<tr><td>Q3</td><td>'+U_fmt(S.stats.q3,4)+'</td></tr>';
-html+='<tr><td>IQR</td><td>'+U_fmt(S.stats.iqr,4)+'</td></tr>';
-html+='<tr><td>Skewness</td><td>'+U_fmt(S.stats.skew,4)+'</td></tr>';
-html+='<tr><td>Kurtosis</td><td>'+U_fmt(S.stats.kurt,4)+'</td></tr>';
+html+='<tr><td>Minimum</td><td>'+fmt(S.stats.min,4)+'</td></tr>';
+html+='<tr><td>Maximum</td><td>'+fmt(S.stats.max,4)+'</td></tr>';
+html+='<tr><td>Mean</td><td>'+fmt(S.stats.mean,4)+'</td></tr>';
+html+='<tr><td>Median</td><td>'+fmt(S.stats.median,4)+'</td></tr>';
+html+='<tr><td>Std. deviation</td><td>'+fmt(S.stats.sd,4)+'</td></tr>';
+html+='<tr><td>Q1</td><td>'+fmt(S.stats.q1,4)+'</td></tr>';
+html+='<tr><td>Q3</td><td>'+fmt(S.stats.q3,4)+'</td></tr>';
+html+='<tr><td>IQR</td><td>'+fmt(S.stats.iqr,4)+'</td></tr>';
+html+='<tr><td>Skewness</td><td>'+fmt(S.stats.skew,4)+'</td></tr>';
+html+='<tr><td>Kurtosis</td><td>'+fmt(S.stats.kurt,4)+'</td></tr>';
 html+='<tr><td>3×IQR outliers</td><td>'+(S.stats.outliers||0)+'</td></tr>';
 html+='</tbody></table></div>';
 card.innerHTML += html;
 root.appendChild(card);
-},
-sciSpatial:function(root){
-var card=U_el('div',{className:'card'}); card.appendChild(U_el('h2',{text:'🌐 Spatial Diagnostics'}));
-if(S.filtered.length<5){ card.appendChild(U_el('div',{className:'alert warn'},'At least 5 samples are required for spatial diagnostics.')); root.appendChild(card); return; }
-card.appendChild(U_el('button',{className:'btn primary',id:'sp-run'},'Run Spatial Diagnostics'));
-card.appendChild(U_el('div',{id:'sp-results',style:'margin-top:14px'}));
+}
+function view_sciSpatial(root){
+var card=el('div',{className:'card'}); card.appendChild(el('h2',{text:'🌐 Spatial Diagnostics'}));
+if(S.filtered.length<5){ card.appendChild(el('div',{className:'alert warn'},'At least 5 samples are required for spatial diagnostics.')); root.appendChild(card); return; }
+card.appendChild(el('button',{className:'btn primary',id:'sp-run'},'Run Spatial Diagnostics'));
+card.appendChild(el('div',{id:'sp-results',style:'margin-top:14px'}));
 root.appendChild(card);
-document.getElementById('sp-run').addEventListener('click',function(){
-U_show('Running spatial diagnostics','Nearest-neighbour density and global Moran’s I');
+$('sp-run').addEventListener('click',function(){
+showOverlay('Running spatial diagnostics','Nearest-neighbour density and global Moran’s I');
 setTimeout(function(){
 try{
 var pts=S.filtered, n=pts.length;
@@ -1346,59 +1530,59 @@ nn.sort(function(a,b){return a-b;});
 var min=nn[0], max=nn[n-1], sum=0; for(i=0;i<n;i++) sum+=nn[i]; var mean=sum/n, median=nn[Math.floor(n/2)];
 var vals=[], meanVal=0; for(i=0;i<n;i++){ vals.push(pts[i].value); meanVal+=pts[i].value; } meanVal/=n;
 var band=median*3; if(!isFinite(band) || band<=0) band=1;
-var S0=0,S1=0,num=0,rowSums=[]; for(i=0;i<n;i++) rowSums[i]=0;
+var s0=0,s1=0,num=0,rowSums=[]; for(i=0;i<n;i++) rowSums[i]=0;
 for(i=0;i<n;i++){
 for(j=i+1;j<n;j++){
 var dij=GEO.distKm(pts[i].lat,pts[i].lng,pts[j].lat,pts[j].lng);
-if(dij<band){ var w=1; S0 += 2*w; S1 += 4*w*w; rowSums[i]+=w; rowSums[j]+=w; num += 2*w*(vals[i]-meanVal)*(vals[j]-meanVal); }
+if(dij<band){ var w=1; s0 += 2*w; s1 += 4*w*w; rowSums[i]+=w; rowSums[j]+=w; num += 2*w*(vals[i]-meanVal)*(vals[j]-meanVal); }
 }
 }
-var S2=0; for(i=0;i<n;i++){ var rs=2*rowSums[i]; S2 += rs*rs; }
+var s2=0; for(i=0;i<n;i++){ var rs=2*rowSums[i]; s2 += rs*rs; }
 var den=0; for(i=0;i<n;i++) den += (vals[i]-meanVal)*(vals[i]-meanVal);
 var I=0,EI=-1/(n-1),Z=0,p='>0.05',interp='Random pattern';
-if(S0>0 && den>0){
-I=(n/S0)*(num/den);
-var Var=((n*n*S1 - n*S2 + 3*S0*S0)/((n*n-1)*S0*S0)) - EI*EI;
+if(s0>0 && den>0){
+I=(n/s0)*(num/den);
+var Var=((n*n*s1 - n*s2 + 3*s0*s0)/((n*n-1)*s0*s0)) - EI*EI;
 if(Var>0){ Z=(I-EI)/Math.sqrt(Var); var az=Math.abs(Z); if(az>=3.29){p='<0.001'; interp='Significant spatial autocorrelation';} else if(az>=2.58){p='<0.01'; interp='Significant spatial autocorrelation';} else if(az>=1.96){p='<0.05'; interp='Significant spatial autocorrelation';} else interp='Random pattern'; }
 }
 var html='<div class="grid g4">';
 html+='<div class="stat"><div class="k">Samples</div><div class="v">'+n+'</div></div>';
-html+='<div class="stat"><div class="k">Min NN km</div><div class="v">'+U_fmt(min,3)+'</div></div>';
-html+='<div class="stat"><div class="k">Mean NN km</div><div class="v">'+U_fmt(mean,3)+'</div></div>';
-html+='<div class="stat"><div class="k">Median NN km</div><div class="v">'+U_fmt(median,3)+'</div></div>';
-html+='<div class="stat"><div class="k">Max NN km</div><div class="v">'+U_fmt(max,3)+'</div></div>';
-html+='<div class="stat"><div class="k">Moran’s I</div><div class="v">'+U_fmt(I,4)+'</div></div>';
-html+='<div class="stat"><div class="k">Expected I</div><div class="v">'+U_fmt(EI,4)+'</div></div>';
-html+='<div class="stat"><div class="k">Z-score</div><div class="v">'+U_fmt(Z,3)+'</div></div>';
-html+='<div class="stat"><div class="k">p-value</div><div class="v">'+U_esc(p)+'</div></div>';
+html+='<div class="stat"><div class="k">Min NN km</div><div class="v">'+fmt(min,3)+'</div></div>';
+html+='<div class="stat"><div class="k">Mean NN km</div><div class="v">'+fmt(mean,3)+'</div></div>';
+html+='<div class="stat"><div class="k">Median NN km</div><div class="v">'+fmt(median,3)+'</div></div>';
+html+='<div class="stat"><div class="k">Max NN km</div><div class="v">'+fmt(max,3)+'</div></div>';
+html+='<div class="stat"><div class="k">Moran’s I</div><div class="v">'+fmt(I,4)+'</div></div>';
+html+='<div class="stat"><div class="k">Expected I</div><div class="v">'+fmt(EI,4)+'</div></div>';
+html+='<div class="stat"><div class="k">Z-score</div><div class="v">'+fmt(Z,3)+'</div></div>';
+html+='<div class="stat"><div class="k">p-value</div><div class="v">'+esc(p)+'</div></div>';
 html+='</div>';
-html+='<div class="alert info small" style="margin-top:10px">Interpretation: '+U_esc(interp)+'. Positive Moran’s I indicates clustered values; negative indicates dispersion; non-significant values indicate no strong global spatial structure.</div>';
-document.getElementById('sp-results').innerHTML=html;
-U_hide(); U_toast('Spatial diagnostics completed.','success');
-}catch(e){ U_hide(); U_toast('Spatial diagnostics error: '+(e&&e.message?e.message:e),'error'); }
+html+='<div class="alert info small" style="margin-top:10px">Interpretation: '+esc(interp)+'. Positive Moran’s I indicates clustered values; negative indicates dispersion; non-significant values indicate no strong global spatial structure.</div>';
+$('sp-results').innerHTML=html;
+hideOverlay(); toast('Spatial diagnostics completed.','success');
+}catch(e){ hideOverlay(); toast('Spatial diagnostics error: '+(e&&e.message?e.message:e),'error'); }
 },50);
 });
-},
-sciInterp:function(root){ addContourCard(root,true); },
-sciValidation:function(root){
-var card=U_el('div',{className:'card'}); card.appendChild(U_el('h2',{text:'✅ Cross-Validation & Kriging Diagnostics'}));
-if(S.filtered.length<5){ card.appendChild(U_el('div',{className:'alert warn'},'At least 5 valid samples are required for leave-one-out cross-validation.')); root.appendChild(card); return; }
-var controls=U_el('div',{className:'grid g3'});
-controls.appendChild(V_number('cv-power','IDW power (p)',2,0.5,6,0.1));
-controls.appendChild(V_select('cv-vario-model','Kriging variogram model',[
+}
+function view_sciInterp(root){ addContour(root,'🧮 Interpolation Engine — Scientific'); }
+function view_sciValidation(root){
+var card=el('div',{className:'card'}); card.appendChild(el('h2',{text:'✅ Cross-Validation & Kriging Diagnostics'}));
+if(S.filtered.length<5){ card.appendChild(el('div',{className:'alert warn'},'At least 5 valid samples are required for leave-one-out cross-validation.')); root.appendChild(card); return; }
+var controls=el('div',{className:'grid g3'});
+controls.appendChild(numberEl('cv-power','IDW power (p)',2,0.5,6,0.1));
+controls.appendChild(selectEl('cv-vario-model','Kriging variogram model',[
 {value:'spherical',text:'Spherical'},
 {value:'exponential',text:'Exponential'},
 {value:'gaussian',text:'Gaussian'}
 ],S.vario.model||'spherical'));
-var btnWrap=U_el('div',{style:'margin-top:22px'}); btnWrap.appendChild(U_el('button',{className:'btn primary',id:'cv-run'},'Run Leave-One-Out Cross-Validation')); controls.appendChild(btnWrap);
+var btnWrap=el('div',{style:'margin-top:22px'}); btnWrap.appendChild(el('button',{className:'btn primary',id:'cv-run'},'Run Leave-One-Out Cross-Validation')); controls.appendChild(btnWrap);
 card.appendChild(controls);
-card.appendChild(U_el('div',{className:'alert info small'},'Metrics: ME (bias), MAE, RMSE, R², NRMSE. Lower RMSE/MAE and higher R² indicate better predictive performance.'));
-card.appendChild(U_el('div',{id:'cv-vario',className:'alert ok small hidden'}));
-card.appendChild(U_el('div',{id:'cv-results'}));
-var scatter=U_el('div',{className:'canvas-wrap',style:'margin-top:14px'}); scatter.appendChild(U_el('canvas',{id:'cv-canvas',width:900,height:560})); card.appendChild(scatter);
+card.appendChild(el('div',{className:'alert info small'},'Metrics: ME (bias), MAE, RMSE, R², NRMSE. Lower RMSE/MAE and higher R² indicate better predictive performance.'));
+card.appendChild(el('div',{id:'cv-vario',className:'alert ok small hidden'}));
+card.appendChild(el('div',{id:'cv-results'}));
+var scatter=el('div',{className:'canvas-wrap',style:'margin-top:14px'}); scatter.appendChild(el('canvas',{id:'cv-canvas',width:900,height:560})); card.appendChild(scatter);
 root.appendChild(card);
 function drawScatter(res){
-var canvas=document.getElementById('cv-canvas'); var W=900,H=560; canvas.width=W; canvas.height=H;
+var canvas=$('cv-canvas'); var W=900,H=560; canvas.width=W; canvas.height=H;
 var ctx=canvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
 var m={top:60,right:40,bottom:70,left:85}, pw=W-m.left-m.right, ph=H-m.top-m.bottom;
 var min=Infinity,max=-Infinity;
@@ -1412,48 +1596,48 @@ ctx.save(); ctx.translate(24,H/2); ctx.rotate(-Math.PI/2); ctx.fillText('Predict
 function x(v){ return m.left+((v-min)/(max-min||1))*pw; }
 function y(v){ return m.top+ph-((v-min)/(max-min||1))*ph; }
 var ticks=GEO.niceTicks(min,max,6);
-ctx.textAlign='center'; for(i=0;i<ticks.length;i++) ctx.fillText(U_fmt(ticks[i],2),x(ticks[i]),m.top+ph+20);
-ctx.textAlign='right'; for(i=0;i<ticks.length;i++) ctx.fillText(U_fmt(ticks[i],2),m.left-8,y(ticks[i])+4);
+ctx.textAlign='center'; for(i=0;i<ticks.length;i++) ctx.fillText(fmt(ticks[i],2),x(ticks[i]),m.top+ph+20);
+ctx.textAlign='right'; for(i=0;i<ticks.length;i++) ctx.fillText(fmt(ticks[i],2),m.left-8,y(ticks[i])+4);
 ctx.strokeStyle='#9ca3af'; ctx.setLineDash([6,6]); ctx.beginPath(); ctx.moveTo(x(min),y(min)); ctx.lineTo(x(max),y(max)); ctx.stroke(); ctx.setLineDash([]);
 ctx.fillStyle='rgba(20,184,166,0.75)';
 for(i=0;i<res.obs.length;i++){ ctx.beginPath(); ctx.arc(x(res.obs[i]),y(res.pred[i]),4.2,0,Math.PI*2); ctx.fill(); }
 }
-document.getElementById('cv-run').addEventListener('click',function(){
-U_show('Running cross-validation','IDW and Ordinary Kriging LOOCV');
+$('cv-run').addEventListener('click',function(){
+showOverlay('Running cross-validation','IDW and Ordinary Kriging LOOCV');
 setTimeout(function(){
 try{
 var samples=CV.getValidationSamples(); if(samples.length<5) throw new Error('Not enough samples.');
-if(samples.length<S.filtered.length) U_toast('Large dataset: cross-validation used a representative subset of '+samples.length+' samples for browser performance.','info');
+if(samples.length<S.filtered.length) toast('Large dataset: cross-validation used a representative subset of '+samples.length+' samples for browser performance.','info');
 var results=[];
-var power=U_num('cv-power',2,0.5,6);
-var idw=CV.idw(samples,power); results.push({name:'IDW p='+U_fmt(power,1),metrics:idw.metrics,obs:idw.obs,pred:idw.pred});
-var model=U_get('cv-vario-model','spherical'); VARIO.fit(samples,model);
-var vel=document.getElementById('cv-vario'); vel.classList.remove('hidden');
-vel.innerHTML='Fitted variogram for validation: <b>'+U_esc(S.vario.model)+'</b> • nugget = '+U_fmt(S.vario.nugget,4)+' • partial sill = '+U_fmt(S.vario.psill,4)+' • range ≈ '+U_fmt(S.vario.range,3)+' km.';
+var power=getNum('cv-power',2,0.5,6);
+var idw=CV.idw(samples,power); results.push({name:'IDW p='+fmt(power,1),metrics:idw.metrics,obs:idw.obs,pred:idw.pred});
+var model=getVal('cv-vario-model','spherical'); VARIO.fit(samples,model);
+var vel=$('cv-vario'); vel.classList.remove('hidden');
+vel.innerHTML='Fitted variogram for validation: <b>'+esc(S.vario.model)+'</b> • nugget = '+fmt(S.vario.nugget,4)+' • partial sill = '+fmt(S.vario.psill,4)+' • range ≈ '+fmt(S.vario.range,3)+' km.';
 var ok=CV.ok(samples,S.vario);
 if(ok && ok.metrics) results.push({name:'Ordinary Kriging ('+S.vario.model+')',metrics:ok.metrics,obs:ok.obs,pred:ok.pred});
-else U_toast('Kriging cross-validation could not be completed for this dataset.','warn');
+else toast('Kriging cross-validation could not be completed for this dataset.','warn');
 S.lastCV=results;
 var html='<div class="table-wrap"><table><thead><tr><th>Method</th><th>n</th><th>ME</th><th>MAE</th><th>RMSE</th><th>R²</th><th>NRMSE</th></tr></thead><tbody>';
-for(var i=0;i<results.length;i++){ var mt=results[i].metrics; html+='<tr><td>'+U_esc(results[i].name)+'</td><td>'+mt.n+'</td><td>'+U_fmt(mt.ME,4)+'</td><td>'+U_fmt(mt.MAE,4)+'</td><td>'+U_fmt(mt.RMSE,4)+'</td><td>'+U_fmt(mt.R2,4)+'</td><td>'+U_fmt(mt.NRMSE,4)+'</td></tr>'; }
+for(var i=0;i<results.length;i++){ var mt=results[i].metrics; html+='<tr><td>'+esc(results[i].name)+'</td><td>'+mt.n+'</td><td>'+fmt(mt.ME,4)+'</td><td>'+fmt(mt.MAE,4)+'</td><td>'+fmt(mt.RMSE,4)+'</td><td>'+fmt(mt.R2,4)+'</td><td>'+fmt(mt.NRMSE,4)+'</td></tr>'; }
 html+='</tbody></table></div>';
 html+='<div class="alert info small" style="margin-top:10px">Recommendation should be based on validation metrics and scientific context, not visual smoothness alone.</div>';
-document.getElementById('cv-results').innerHTML=html;
+$('cv-results').innerHTML=html;
 var best=results[0]; if(results.length>1 && results[1].metrics && results[1].metrics.RMSE<best.metrics.RMSE) best=results[1];
 drawScatter(best);
-U_hide(); U_toast('Cross-validation completed.','success');
-}catch(e){ U_hide(); U_toast('Cross-validation error: '+(e&&e.message?e.message:e),'error'); }
+hideOverlay(); toast('Cross-validation completed.','success');
+}catch(e){ hideOverlay(); toast('Cross-validation error: '+(e&&e.message?e.message:e),'error'); }
 },50);
 });
-},
-sciUncertainty:function(root){
-var card=U_el('div',{className:'card'}); card.appendChild(U_el('h2',{text:'σ² Kriging Uncertainty Surface'}));
-card.appendChild(U_el('div',{className:'alert info'},'This renders the Ordinary Kriging variance surface. High variance indicates lower spatial confidence.'));
-card.appendChild(U_el('button',{className:'btn primary',id:'unc-run'},'Render Kriging Variance Surface'));
-var wrap=U_el('div',{className:'canvas-wrap',style:'margin-top:14px'}); wrap.appendChild(U_el('canvas',{id:'unc-canvas',width:1700,height:1150})); card.appendChild(wrap);
+}
+function view_sciUncertainty(root){
+var card=el('div',{className:'card'}); card.appendChild(el('h2',{text:'σ² Kriging Uncertainty Surface'}));
+card.appendChild(el('div',{className:'alert info'},'This renders the Ordinary Kriging variance surface. High variance indicates lower spatial confidence.'));
+card.appendChild(el('button',{className:'btn primary',id:'unc-run'},'Render Kriging Variance Surface'));
+var wrap=el('div',{className:'canvas-wrap',style:'margin-top:14px'}); wrap.appendChild(el('canvas',{id:'unc-canvas',width:1700,height:1150})); card.appendChild(wrap);
 root.appendChild(card);
-document.getElementById('unc-run').addEventListener('click',function(){
-U_show('Rendering Kriging variance','Uncertainty surface');
+$('unc-run').addEventListener('click',function(){
+showOverlay('Rendering Kriging variance','Uncertainty surface');
 setTimeout(function(){
 try{
 if(S.filtered.length<5) throw new Error('At least 5 samples are required.');
@@ -1461,59 +1645,77 @@ var samples=INTERP.analysisSamples(false);
 VARIO.fit(samples,S.vario.model||'spherical');
 var prep=KRIG.prepare(samples,S.vario);
 if(!prep) throw new Error('Kriging matrix could not be inverted.');
-var opts={method:'ok',varioModel:S.vario.model,power:2,res:90,palette:'plasma' in PALS ? 'plasma':'viridis',bands:10,surface:'variance',labelMode:'none',contours:false,points:true,log:false,north:true,scalebar:true,title:(S.activeParam||'Parameter')+' Kriging variance',unit:'σ²'};
+var opts={method:'ok',varioModel:S.vario.model,power:2,res:90,palette:'viridis',bands:10,surface:'variance',labelMode:'none',contours:false,points:true,log:false,north:true,scalebar:true,title:(S.activeParam||'Parameter')+' Kriging variance',unit:'σ²'};
 var b=INTERP.bounds(samples), rows=91, cols=91, grid=[];
 for(var i=0;i<rows;i++){ var row=[], lat=b.latMin+i*(b.latMax-b.latMin)/90; for(var j=0;j<cols;j++){ var lng=b.lngMin+j*(b.lngMax-b.lngMin)/90; row.push(KRIG.predictVariance(prep,lat,lng)); } grid.push(row); }
 var surface={grid:grid,rows:rows,cols:cols,bounds:b,method:'ok',surface:'variance'};
-CONTOUR.draw(document.getElementById('unc-canvas'),surface,opts,1);
-U_hide(); U_toast('Kriging variance rendered.','success');
-}catch(e){ U_hide(); U_toast('Uncertainty error: '+(e&&e.message?e.message:e),'error'); }
+CONTOUR.draw($('unc-canvas'),surface,opts,1);
+hideOverlay(); toast('Kriging variance rendered.','success');
+}catch(e){ hideOverlay(); toast('Uncertainty error: '+(e&&e.message?e.message:e),'error'); }
 },50);
 });
-},
-sciPubMap:function(root){ addContourCard(root,true); },
-sciReport:function(root){
-var card=U_el('div',{className:'card'}); card.appendChild(U_el('h2',{text:'📝 Reproducibility Report & Methods Generator'}));
-var btnRow=U_el('div',{className:'row'});
-btnRow.appendChild(U_el('button',{className:'btn primary',id:'rep-gen'},'Generate Report'));
-btnRow.appendChild(U_el('button',{className:'btn',id:'rep-txt'},'Download TXT'));
-btnRow.appendChild(U_el('button',{className:'btn',id:'rep-json'},'Download JSON'));
+}
+function view_sciPubMap(root){ addContour(root,'🖼️ Publication Map'); }
+function view_sciReport(root){
+var card=el('div',{className:'card'}); card.appendChild(el('h2',{text:'📝 Reproducibility Report & Methods Generator'}));
+var btnRow=el('div',{className:'row'});
+btnRow.appendChild(el('button',{className:'btn primary',id:'rep-gen'},'Generate Report'));
+btnRow.appendChild(el('button',{className:'btn',id:'rep-txt'},'Download TXT'));
+btnRow.appendChild(el('button',{className:'btn',id:'rep-json'},'Download JSON'));
 card.appendChild(btnRow);
-card.appendChild(U_el('div',{id:'rep-out',className:'code small',style:'margin-top:14px;min-height:200px'}));
+card.appendChild(el('div',{id:'rep-out',className:'code small',style:'margin-top:14px;min-height:200px'}));
 root.appendChild(card);
 function buildReport(){
 var v=S.vario||{}; var st=S.stats||{}; var cv=S.lastCV && S.lastCV[0] ? S.lastCV : null;
-var txt='GIS-Mapping v7 Analysis Report\n';
+var txt='GIS-Mapping Analysis Report\n';
 txt+='==============================\n\n';
 txt+='Date: '+new Date().toISOString()+'\n';
-txt+='Software: GIS-Mapping v7 by Muhammad Haziq\n';
+txt+='Software: GIS-Mapping by Muhammad Haziq\n';
 txt+='Active parameter: '+(S.activeParam||'—')+'\n';
 txt+='Samples: '+(S.filtered.length||0)+'\n\n';
 txt+='Descriptive statistics\n';
-txt+='Mean: '+U_fmt(st.mean,4)+'\nMedian: '+U_fmt(st.median,4)+'\nStd. Dev.: '+U_fmt(st.sd,4)+'\nMin: '+U_fmt(st.min,4)+'\nMax: '+U_fmt(st.max,4)+'\n\n';
+txt+='Mean: '+fmt(st.mean,4)+'\nMedian: '+fmt(st.median,4)+'\nStd. Dev.: '+fmt(st.sd,4)+'\nMin: '+fmt(st.min,4)+'\nMax: '+fmt(st.max,4)+'\n\n';
 txt+='QA/QC\n';
 txt+='Rows parsed: '+(S.health.parsed||0)+'\nCells cleaned: '+(S.health.cells||0)+'\nDiscarded rows: '+(S.health.discarded||0)+'\nRepaired swapped coordinates: '+(S.qa.swapped||0)+'\nDuplicate coordinate records: '+(S.qa.duplicates||0)+'\nCensored values: '+(S.qa.censored||0)+'\n\n';
 txt+='Variogram\n';
-txt+='Model: '+(v.model||'—')+'\nNugget: '+U_fmt(v.nugget,4)+'\nPartial sill: '+U_fmt(v.psill,4)+'\nSill: '+U_fmt((v.nugget||0)+(v.psill||0),4)+'\nRange km: '+U_fmt(v.range,3)+'\n\n';
-if(cv){ txt+='Cross-validation\n'; for(var i=0;i<cv.length;i++){ txt+=cv[i].name+' RMSE='+U_fmt(cv[i].metrics.RMSE,4)+' MAE='+U_fmt(cv[i].metrics.MAE,4)+' R2='+U_fmt(cv[i].metrics.R2,4)+'\n'; } txt+='\n'; }
+txt+='Model: '+(v.model||'—')+'\nNugget: '+fmt(v.nugget,4)+'\nPartial sill: '+fmt(v.psill,4)+'\nSill: '+fmt((v.nugget||0)+(v.psill||0),4)+'\nRange km: '+fmt(v.range,3)+'\n\n';
+if(cv){ txt+='Cross-validation\n'; for(var i=0;i<cv.length;i++){ txt+=cv[i].name+' RMSE='+fmt(cv[i].metrics.RMSE,4)+' MAE='+fmt(cv[i].metrics.MAE,4)+' R2='+fmt(cv[i].metrics.R2,4)+'\n'; } txt+='\n'; }
 txt+='Methods paragraph\n';
-txt+='Spatial distribution of '+(S.activeParam||'the selected parameter')+' was analyzed using GIS-Mapping v7. Sample coordinates were provided in WGS84 geographic coordinates. Data preprocessing included coordinate validation, duplicate detection, and descriptive statistics. Interpolation was performed with variogram diagnostics and cross-validation. The final map was produced for publication and reproducible research purposes.';
+txt+='Spatial distribution of '+(S.activeParam||'the selected parameter')+' was analyzed using GIS-Mapping. Sample coordinates were provided in WGS84 geographic coordinates. Data preprocessing included coordinate validation, duplicate detection, and descriptive statistics. Interpolation was performed with variogram diagnostics and cross-validation. The final map was produced for publication and reproducible research purposes.';
 return txt;
 }
-document.getElementById('rep-gen').addEventListener('click',function(){ document.getElementById('rep-out').textContent=buildReport(); });
-document.getElementById('rep-txt').addEventListener('click',function(){ U_downloadText('GIS-Mapping_report.txt',buildReport(),'text/plain'); });
-document.getElementById('rep-json').addEventListener('click',function(){
-var out={software:'GIS-Mapping v7',author:'Muhammad Haziq',date:new Date().toISOString(),activeParam:S.activeParam,samples:S.filtered.length,stats:S.stats,qa:S.qa,vario:S.vario,cv:S.lastCV};
-U_downloadText('GIS-Mapping_analysis.json',JSON.stringify(out,null,2),'application/json');
+$('rep-gen').addEventListener('click',function(){ $('rep-out').textContent=buildReport(); });
+$('rep-txt').addEventListener('click',function(){ downloadText('GIS-Mapping_report.txt',buildReport(),'text/plain'); });
+$('rep-json').addEventListener('click',function(){
+var out={software:'GIS-Mapping',author:'Muhammad Haziq',date:new Date().toISOString(),activeParam:S.activeParam,samples:S.filtered.length,stats:S.stats,qa:S.qa,vario:S.vario,cv:S.lastCV};
+downloadText('GIS-Mapping_analysis.json',JSON.stringify(out,null,2),'application/json');
 });
 }
+
+var VIEWS = {
+simpleData:view_simpleData,
+simpleMap:view_simpleMap,
+simpleContour:view_simpleContour,
+depth3D:view_depth3D,
+sessions:view_sessions,
+about:view_about,
+sciQA:view_sciQA,
+sciStats:view_sciStats,
+sciSpatial:view_sciSpatial,
+sciInterp:view_sciInterp,
+sciValidation:view_sciValidation,
+sciUncertainty:view_sciUncertainty,
+sciPubMap:view_sciPubMap,
+sciReport:view_sciReport,
+sciSessions:view_sessions,
+sciAbout:view_about
 };
 
 var Router = {
 render:function(){
-var root=document.getElementById('content'); if(!root) return; root.innerHTML='';
-var navS=document.getElementById('nav-simple'), navR=document.getElementById('nav-sci');
-var modeS=document.getElementById('mode-simple'), modeR=document.getElementById('mode-sci');
+var root=$('content'); if(!root) return; root.innerHTML='';
+var navS=$('nav-simple'), navR=$('nav-sci');
+var modeS=$('mode-simple'), modeR=$('mode-sci');
 if(S.mode==='simple'){
 navS.classList.remove('hidden'); navR.classList.add('hidden');
 modeS.classList.add('active'); modeR.classList.remove('active');
@@ -1522,8 +1724,9 @@ for(var i=0;i<stabs.length;i++){ if(stabs[i].getAttribute('data-stab')===S.simpl
 if(S.simpleTab==='data') VIEWS.simpleData(root);
 else if(S.simpleTab==='map') VIEWS.simpleMap(root);
 else if(S.simpleTab==='contour') VIEWS.simpleContour(root);
-else if(S.simpleTab==='sessions') addSessionsCard(root);
-else if(S.simpleTab==='about') addAboutCard(root);
+else if(S.simpleTab==='depth3d') VIEWS.depth3D(root);
+else if(S.simpleTab==='sessions') VIEWS.sessions(root);
+else if(S.simpleTab==='about') VIEWS.about(root);
 }else{
 navS.classList.add('hidden'); navR.classList.remove('hidden');
 modeS.classList.remove('active'); modeR.classList.add('active');
@@ -1535,10 +1738,11 @@ else if(S.sciTab==='spatial') VIEWS.sciSpatial(root);
 else if(S.sciTab==='interp') VIEWS.sciInterp(root);
 else if(S.sciTab==='validation') VIEWS.sciValidation(root);
 else if(S.sciTab==='uncertainty') VIEWS.sciUncertainty(root);
+else if(S.sciTab==='depth3d') VIEWS.depth3D(root);
 else if(S.sciTab==='pubmap') VIEWS.sciPubMap(root);
 else if(S.sciTab==='report') VIEWS.sciReport(root);
-else if(S.sciTab==='sessions') addSessionsCard(root);
-else if(S.sciTab==='about') addAboutCard(root);
+else if(S.sciTab==='sessions') VIEWS.sciSessions(root);
+else if(S.sciTab==='about') VIEWS.sciAbout(root);
 }
 },
 goSimple:function(tab){ S.mode='simple'; S.simpleTab=tab; Router.render(); },
@@ -1579,25 +1783,24 @@ S.stats={}; S.health={}; S.qa={duplicates:0,dupGroups:{},swapped:0,invalid:0,cen
 S.vario={model:'spherical',nugget:0,psill:1,range:1,fitted:false,bins:[]};
 S.okPrep=null; S.okSig=''; S.cache={}; S.lastCV=null;
 try{ if(S.map){ S.map.remove(); S.map=null; } }catch(e){}
-Router.render(); U_toast('All data cleared.','info');
+Router.render(); toast('All data cleared.','info');
 }
 
 function init(){
 try{ localStorage.removeItem('gisstudio_draft_v1'); }catch(e){}
-var modeS=document.getElementById('mode-simple'), modeR=document.getElementById('mode-sci');
-modeS.addEventListener('click',function(){ Router.goSimple(S.simpleTab||'data'); });
-modeR.addEventListener('click',function(){ Router.goSci(S.sciTab||'qa'); });
+$('mode-simple').addEventListener('click',function(){ Router.goSimple(S.simpleTab||'data'); });
+$('mode-sci').addEventListener('click',function(){ Router.goSci(S.sciTab||'qa'); });
 var stabs=document.querySelectorAll('#nav-simple .tab');
 for(var i=0;i<stabs.length;i++){ stabs[i].addEventListener('click',function(){ Router.goSimple(this.getAttribute('data-stab')); }); }
 var rtabs=document.querySelectorAll('#nav-sci .tab');
 for(var j=0;j<rtabs.length;j++){ rtabs[j].addEventListener('click',function(){ Router.goSci(this.getAttribute('data-rtab')); }); }
-document.getElementById('btn-demo').addEventListener('click',loadDemo);
-document.getElementById('btn-clear').addEventListener('click',clearAll);
+$('btn-demo').addEventListener('click',loadDemo);
+$('btn-clear').addEventListener('click',clearAll);
 Router.render();
-console.log('GIS-Mapping v7 initialized OK');
+console.log('GIS-Mapping initialized OK');
 }
 document.addEventListener('DOMContentLoaded',init);
-window.onerror=function(msg){ U_toast('Application error: '+msg,'error'); return false; };
+window.onerror=function(msg){ toast('Application error: '+msg,'error'); return false; };
 })();
 </script>
 </body>
